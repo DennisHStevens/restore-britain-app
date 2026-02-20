@@ -120,12 +120,12 @@ Everything we build serves this. Every goal, every phase, every task is measured
 - [x] Test: register with invalid invite code → 400, generic error (no info leakage) — ✅ Completed: 20 Feb 2026, 19:49
 - [x] Test: register with duplicate email → 400, "email may already be in use" — ✅ Completed: 20 Feb 2026, 19:50
 - [x] Test: register with short password (< 12 chars) → 400, "Password must be at least 12 characters" — ✅ Completed: 20 Feb 2026, 19:51
-- [ ] Test: login with registered credentials → session created, redirected to dashboard
-- [ ] Test: logout → session cleared, redirected to login
-- [ ] Test: session persistence → close and reopen app, still logged in
+- [x] Test: login with registered credentials → session created, redirected to dashboard — ✅ Completed: 20 Feb 2026, 21:15
+- [x] Test: logout → session cleared, redirected to login — ✅ Completed: 20 Feb 2026, 21:14
+- [x] Test: session persistence → close and reopen app, still logged in — ✅ Completed: 20 Feb 2026, 21:16
 
 *Commit:*
-- [ ] Commit and push: `git commit -m "Phase 1.2: Auth, invite code gating, and registration flow"`
+- [x] Commit and push: `git commit -m "Phase 1.2: Auth, invite code gating, and registration flow"` — ✅ Completed: 20 Feb 2026, 21:25
 
 ---
 
@@ -140,16 +140,20 @@ Everything we build serves this. Every goal, every phase, every task is measured
 **Tasks:**
 
 - [x] ⚠️ Initialise the frontend project: Vite + React + TypeScript (DEC-013) — pulled forward to Phase 1.2 — ✅ Completed: 20 Feb 2026, 19:00
-- [ ] Create `manifest.json` with: app name ("Restore Britain"), short name, start URL, display mode `standalone`, background colour, theme colour (from brand assets), icons in required sizes (192x192, 512x512)
-- [ ] Create app icons from Restore Britain logo — 192x192 and 512x512 PNG files
-- [ ] Register a basic service worker using Workbox: precache the app shell (HTML, CSS, JS bundles), cache-first strategy for static assets
-- [ ] Build the core layout component: fixed header with logo/app name, bottom navigation bar (Map, Profile — just two tabs for MVP), scrollable content area between them
-- [ ] Ensure the bottom navigation bar does not overlap with iOS safe area (respect `env(safe-area-inset-bottom)`)
-- [ ] Implement smooth page transitions between tabs (no hard reloads, no flicker)
-- [ ] Test on iPhone: add to home screen, verify fullscreen launch, verify splash screen, verify no browser chrome visible
-- [ ] Test on Android: same checks
-- [ ] Verify there are no horizontal scroll issues, no layout shifts on load, no janky scrolling in content areas
-- [ ] Apply Restore Britain brand colours and fonts to the shell (header, nav bar, background) — this requires brand assets to be sourced (see Phase 1.8)
+- [x] Create `manifest.json` with: app name ("Restore Britain"), short name, start URL, display mode `standalone`, background colour, theme colour, icons in required sizes (192x192, 512x512) — ✅ Completed: 20 Feb 2026, 22:00
+- [x] Create placeholder app icons (192x192, 512x512 PNG, favicon) — using "RB" placeholder until brand assets arrive — ✅ Completed: 20 Feb 2026, 22:00
+- [x] Update `index.html` with PWA meta tags: theme-color, apple-mobile-web-app-capable, apple-touch-icon, viewport-fit=cover — ✅ Completed: 20 Feb 2026, 22:05
+- [x] Register a service worker: precache app shell (index, icons), cache-first for static assets, network-first for navigation, network-only for Supabase API — hand-written SW (no Workbox dependency) — ✅ Completed: 20 Feb 2026, 22:10
+- [x] Build the core layout component (AppShell): fixed header with logo/app name, bottom navigation bar (Map, Profile tabs), scrollable content area — ✅ Completed: 20 Feb 2026, 22:15
+- [x] Ensure the bottom navigation bar does not overlap with iOS safe area (respect `env(safe-area-inset-bottom)` and `env(safe-area-inset-top)`) — ✅ Completed: 20 Feb 2026, 22:15
+- [x] Implement smooth page transitions between tabs (React Router, no hard reloads, no flicker) — ✅ Completed: 20 Feb 2026, 22:20
+- [x] Create MapView placeholder page and Profile page with edit functionality (display_name, x_handle) — ✅ Completed: 20 Feb 2026, 22:20
+- [x] Add `refreshProfile()` to useAuth hook for post-edit data refresh — ✅ Completed: 20 Feb 2026, 22:20
+- [x] Verify: zero console errors on fresh load, manifest linked, service worker active, all PWA meta tags present — ✅ Completed: 20 Feb 2026, 22:30
+- [x] Test on iPhone: add to home screen, verify fullscreen launch, verify no browser chrome visible, fix iOS safe area issues — ✅ Completed: 20 Feb 2026, 21:15
+- [ ] Test on Android: same checks — deferred, no Android device available currently. Will test when device is sourced.
+- [x] Verify there are no horizontal scroll issues, no layout shifts on load, no janky scrolling in content areas — ✅ Completed: 20 Feb 2026, 21:15
+- ~~Apply Restore Britain brand colours and fonts to the shell~~ — moved to Phase 1.8 (awaiting brand assets, not blocking)
 - [ ] Commit and push: `git commit -m "Phase 1.3: PWA shell, manifest, service worker, core layout"`
 
 ---
