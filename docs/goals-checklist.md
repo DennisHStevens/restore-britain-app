@@ -60,20 +60,20 @@ Everything we build serves this. Every goal, every phase, every task is measured
 - [x] Log the hosting choice (GitHub vs GitLab) in `decisions-log.md` — ✅ Completed: 20 Feb 2026, 17:58 — Logged as DEC-012
 
 *Supabase setup:*
-- [ ] Create Supabase project and record project URL and keys securely
-- [ ] ⚠️ Configure environment variables locally — `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` stored in `.env.local`, never committed to version control
-- [ ] Verify `.env.local` is being ignored by Git: run `git status` and confirm it does not appear
-- [ ] Create `profiles` table with MVP-required columns only: `id`, `display_name`, `email`, `x_handle`, `region_id`, `postcode_area`, `is_verified`, `invite_code_used`, `created_at`, `updated_at`
-- [ ] Create `regions` table: `id`, `name`, `slug`, `description`, `telegram_group_url`, `member_count`, `is_active`, `created_at`
-- [ ] Populate `regions` table with the ~12 initial regions (North East, North West, Yorkshire & the Humber, East Midlands, West Midlands, East of England, London, South East, South West, Wales, Scotland, Northern Ireland)
-- [ ] Create `invite_codes` table: `id`, `code`, `generated_by`, `max_uses`, `times_used`, `expires_at`, `created_at`
-- [ ] Create auto-profile trigger: function that creates a `profiles` row when a new `auth.users` row is inserted
-- [ ] Enable RLS on every table — confirm the Supabase dashboard shows RLS enabled with no warnings
-- [ ] Write RLS policies for `profiles`: users can read own profile (full), other users' profiles (display_name, x_handle, region_id only), update own profile only
-- [ ] Write RLS policies for `regions`: all authenticated and verified users can read, only service role can insert/update
-- [ ] Write RLS policies for `invite_codes`: only service role can read/write (all invite code operations go through Edge Functions)
-- [ ] Test RLS: using the Supabase SQL editor, confirm that an anon-key query returns zero rows from `profiles` and `invite_codes`
-- [ ] Verify Supabase dashboard shows zero advisory issues, zero errors
+- [x] Create Supabase project and record project URL and keys securely — ✅ Completed: 20 Feb 2026, 18:10 — Project "Restore Britain" on eu-west-2 (London)
+- [x] ⚠️ Configure environment variables locally — `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` stored in `.env.local`, never committed to version control — ✅ Completed: 20 Feb 2026, 18:12
+- [x] Verify `.env.local` is being ignored by Git: run `git status` and confirm it does not appear — ✅ Completed: 20 Feb 2026, 18:12
+- [x] Create `profiles` table with MVP-required columns only: `id`, `display_name`, `email`, `x_handle`, `region_id`, `postcode_area`, `is_verified`, `invite_code_used`, `created_at`, `updated_at` — ✅ Completed: 20 Feb 2026, 18:18
+- [x] Create `regions` table: `id`, `name`, `slug`, `description`, `telegram_group_url`, `member_count`, `is_active`, `created_at` — ✅ Completed: 20 Feb 2026, 18:18
+- [x] Populate `regions` table with the ~12 initial regions (North East, North West, Yorkshire & the Humber, East Midlands, West Midlands, East of England, London, South East, South West, Wales, Scotland, Northern Ireland) — ✅ Completed: 20 Feb 2026, 18:18 — All 12 regions verified present
+- [x] Create `invite_codes` table: `id`, `code`, `generated_by`, `max_uses`, `times_used`, `expires_at`, `created_at` — ✅ Completed: 20 Feb 2026, 18:18
+- [x] Create auto-profile trigger: function that creates a `profiles` row when a new `auth.users` row is inserted — ✅ Completed: 20 Feb 2026, 18:18
+- [x] Enable RLS on every table — confirm the Supabase dashboard shows RLS enabled with no warnings — ✅ Completed: 20 Feb 2026, 18:18
+- [x] Write RLS policies for `profiles`: users can read own profile (full), other users' profiles (display_name, x_handle, region_id only), update own profile only — ✅ Completed: 20 Feb 2026, 18:25 — Fixed infinite recursion bug by creating is_current_user_verified() SECURITY DEFINER helper function
+- [x] Write RLS policies for `regions`: all authenticated and verified users can read, only service role can insert/update — ✅ Completed: 20 Feb 2026, 18:25
+- [x] Write RLS policies for `invite_codes`: only service role can read/write (all invite code operations go through Edge Functions) — ✅ Completed: 20 Feb 2026, 18:18 — No policies = deny all for non-service-role. Confirmed by Security Advisor (info-level note, intentional by design)
+- [x] Test RLS: using the Supabase SQL editor, confirm that an anon-key query returns zero rows from `profiles` and `invite_codes` — ✅ Completed: 20 Feb 2026, 18:28 — All three tables (profiles, invite_codes, regions) return 0 rows as anon role
+- [x] Verify Supabase dashboard shows zero advisory issues, zero errors — ✅ Completed: 20 Feb 2026, 18:34 — Security Advisor: 0 errors, 0 warnings, 1 info (intentional: invite_codes has RLS with no policies by design). Fixed 3 search_path warnings by adding SET search_path = public to all functions.
 - [ ] Commit all Supabase-related work (any migration files, seed scripts, or config): `git commit -m "Phase 1.1: Supabase setup with tables and RLS"`
 - [ ] Push to remote
 
