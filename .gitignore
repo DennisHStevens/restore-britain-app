@@ -1,0 +1,30 @@
+# Environment variables and secrets
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+.next/
+out/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Supabase local
+supabase/.temp/
+
+# Artefact from folder mounting — not part of the project
+brand/mnt/

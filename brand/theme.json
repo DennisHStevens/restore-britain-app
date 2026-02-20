@@ -1,0 +1,76 @@
+{
+  "brand": "Restore Britain",
+  "version": "0.1",
+  "lastUpdated": "2026-02-20",
+  "status": "PLACEHOLDER — replace all values with official Restore Britain brand assets",
+
+  "colours": {
+    "primary": "#000000",
+    "primaryLight": "#000000",
+    "primaryDark": "#000000",
+    "secondary": "#000000",
+    "secondaryLight": "#000000",
+    "secondaryDark": "#000000",
+    "accent": "#000000",
+    "background": "#FFFFFF",
+    "backgroundAlt": "#F5F5F5",
+    "surface": "#FFFFFF",
+    "text": "#1A1A1A",
+    "textLight": "#666666",
+    "textInverse": "#FFFFFF",
+    "success": "#22C55E",
+    "warning": "#F59E0B",
+    "error": "#EF4444",
+    "border": "#E5E5E5",
+    "map": {
+      "regionFill": "#000000",
+      "regionFillHover": "#000000",
+      "regionFillSelected": "#000000",
+      "regionBorder": "#FFFFFF",
+      "seaBackground": "#E8F0FE",
+      "landBackground": "#F0F0F0"
+    }
+  },
+
+  "typography": {
+    "fontFamily": {
+      "heading": "PLACEHOLDER — e.g., 'Inter', 'Montserrat', or custom font",
+      "body": "PLACEHOLDER — e.g., 'Inter', 'Open Sans', or custom font",
+      "mono": "'JetBrains Mono', 'Fira Code', monospace"
+    },
+    "fontSource": "PLACEHOLDER — 'google-fonts' or 'self-hosted'",
+    "googleFontsUrl": "PLACEHOLDER — e.g., https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
+    "fontWeights": {
+      "regular": 400,
+      "medium": 500,
+      "semibold": 600,
+      "bold": 700
+    },
+    "fontSizes": {
+      "xs": "0.75rem",
+      "sm": "0.875rem",
+      "base": "1rem",
+      "lg": "1.125rem",
+      "xl": "1.25rem",
+      "2xl": "1.5rem",
+      "3xl": "1.875rem",
+      "4xl": "2.25rem"
+    }
+  },
+
+  "spacing": {
+    "unit": "0.25rem",
+    "headerHeight": "3.5rem",
+    "bottomNavHeight": "4rem",
+    "contentPadding": "1rem",
+    "cardPadding": "1rem",
+    "borderRadius": "0.5rem",
+    "borderRadiusLarge": "1rem"
+  },
+
+  "pwa": {
+    "themeColour": "#000000",
+    "backgroundColour": "#FFFFFF",
+    "splashScreenColour": "#000000"
+  }
+}
