@@ -23,6 +23,15 @@ Each entry follows this structure:
 
 ## Active Decisions
 
+### DEC-012: GitHub as remote repository host
+- **Date:** 20 February 2026
+- **Context:** The project needs a remote Git repository for backup, collaboration, and future CI/CD integration.
+- **Decision:** Host the private repository on GitHub at `github.com/DennisHStevens/restore-britain-app`.
+- **Reasoning:** GitHub has the larger ecosystem, better integration with Vercel (our likely hosting choice for deployment in Phase 1.7), and GitHub Actions for CI/CD when we need it. Dennis already had a GitHub account set up.
+- **Alternatives considered:** GitLab (rejected — no specific advantage for this project, and Vercel integration is stronger with GitHub).
+- **Impact:** All pushes go to GitHub. Future CI/CD pipelines will use GitHub Actions. Deployment in Phase 1.7 can connect directly to the GitHub repo.
+- **Status:** Active
+
 ### DEC-011: Git version control initialised before any development work
 - **Date:** 20 February 2026
 - **Context:** Development work was about to begin without version control in place, risking loss of work and inability to track changes.

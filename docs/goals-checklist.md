@@ -52,12 +52,12 @@ Everything we build serves this. Every goal, every phase, every task is measured
 - [x] ⚠️ Send a message to the Restore Britain team requesting brand assets: logo files (SVG preferred, highest resolution PNG acceptable), exact hex codes for their colour palette, font names or files, and any existing brand guidelines document. This is an external dependency with unpredictable response time — the earlier the request goes out, the less likely it blocks Phase 1.8. Record the date sent and who was contacted. — ✅ Completed: 20 Feb 2026, 17:30 — Email sent to info@restorebritain.org.uk by Dennis Stevens. Follow-up plan: chase via press@restorebritain.org.uk and DM to @RestoreBritain_ on X if no response within 48 hours.
 
 *Git setup (do this first — before anything else):*
-- [ ] ⚠️ Initialise a Git repository in the project root: `git init`
-- [ ] Create `.gitignore` that excludes: `.env.local`, `.env`, `node_modules/`, `.DS_Store`, any file containing secrets or API keys
-- [ ] Stage and commit all existing project docs (CLAUDE.md, all .md files, /brand folder): `git commit -m "Initial commit: project documentation and brand skeleton"`
-- [ ] Create a remote repository (GitHub or GitLab — private repo) and push: `git remote add origin [url]` → `git push -u origin main`
-- [ ] Verify: clone the repo to a different location and confirm all docs are present and `.env.local` is not included
-- [ ] Log the hosting choice (GitHub vs GitLab) in `decisions-log.md`
+- [x] ⚠️ Initialise a Git repository in the project root: `git init` — ✅ Completed: 20 Feb 2026, 17:50
+- [x] Create `.gitignore` that excludes: `.env.local`, `.env`, `node_modules/`, `.DS_Store`, any file containing secrets or API keys — ✅ Completed: 20 Feb 2026, 17:50
+- [x] Stage and commit all existing project docs (CLAUDE.md, all .md files, /brand folder): `git commit -m "Initial commit: project documentation and brand skeleton"` — ✅ Completed: 20 Feb 2026, 17:52
+- [x] Create a remote repository (GitHub — private repo) and push: `git remote add origin https://github.com/DennisHStevens/restore-britain-app.git` → `git push -u origin main` — ✅ Completed: 20 Feb 2026, 17:55
+- [x] Verify: clone the repo to a different location and confirm all docs are present and `.env.local` is not included — ✅ Completed: 20 Feb 2026, 17:56
+- [x] Log the hosting choice (GitHub vs GitLab) in `decisions-log.md` — ✅ Completed: 20 Feb 2026, 17:58 — Logged as DEC-012
 
 *Supabase setup:*
 - [ ] Create Supabase project and record project URL and keys securely
