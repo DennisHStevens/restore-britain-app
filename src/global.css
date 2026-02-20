@@ -1,0 +1,51 @@
+/* Global styles — Restore Britain Platform
+ * Brand colours will be applied in Phase 1.8 when assets arrive.
+ * For now, use neutral tones that won't clash with any palette.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Placeholder neutrals — will be replaced with brand colours */
+  --colour-bg: #f5f5f5;
+  --colour-surface: #ffffff;
+  --colour-text: #1a1a1a;
+  --colour-text-muted: #6b7280;
+  --colour-primary: #2563eb;
+  --colour-primary-hover: #1d4ed8;
+  --colour-error: #dc2626;
+  --colour-error-bg: #fef2f2;
+  --colour-border: #d1d5db;
+  --colour-input-bg: #ffffff;
+  --radius: 8px;
+  --max-width: 420px;
+}
+
+html, body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  background-color: var(--colour-bg);
+  color: var(--colour-text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  height: 100%;
+}
+
+a {
+  color: var(--colour-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}

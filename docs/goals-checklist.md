@@ -81,7 +81,7 @@ Everything we build serves this. Every goal, every phase, every task is measured
 
 ### Phase 1.2 — Authentication & Membership Gating
 
-**What this phase covers:** Email/password registration gated behind invite codes. A user without a valid invite code cannot create an account. Users who register are automatically marked as verified. The login/logout flow works reliably.
+**What this phase covers:** Initialising the Vite + React + TypeScript frontend (pulled forward from Phase 1.3 — see DEC-013), then building email/password registration gated behind invite codes via an atomic Edge Function (see DEC-014). A user without a valid invite code cannot create an account. Users who register are automatically marked as verified. The login/logout flow works reliably. Session persistence uses Supabase's built-in localStorage token management.
 
 **Estimated time:** 1-2 days
 
@@ -89,20 +89,42 @@ Everything we build serves this. Every goal, every phase, every task is measured
 
 **Tasks:**
 
-- [ ] ⚠️ Configure Supabase Auth: enable email/password sign-up, disable email confirmation for MVP (friction reduction — can enable later)
-- [ ] Create a Supabase Edge Function: `verify-invite-code` — accepts a code, checks it exists, hasn't exceeded `max_uses`, hasn't expired. Returns success/failure. On success, increments `times_used`.
-- [ ] Build registration page UI: invite code field, email field, password field (minimum 12 characters), display name field, optional X handle field
-- [ ] Registration flow: frontend sends invite code to Edge Function → if valid, proceeds with Supabase Auth sign-up → auto-profile trigger creates profile row → profile is updated with display_name, x_handle, and `is_verified = true`
-- [ ] Build login page UI: email and password fields, "Log In" button
-- [ ] Implement login flow using Supabase Auth `signInWithPassword`
-- [ ] Implement session persistence: refresh tokens stored in HttpOnly cookies, session survives app close/reopen
-- [ ] Implement logout: clears session, returns to login page
-- [ ] Build a protected route wrapper: any page wrapped in this component redirects to login if no active session or if `is_verified = false`
-- [ ] Test: register with valid invite code → success, profile created, lands on main app
-- [ ] Test: register with invalid/expired/used-up invite code → rejected with generic error
-- [ ] Test: log out → redirected to login page, cannot access any protected route
-- [ ] Test: close app, reopen → still logged in (session persisted)
-- [ ] Generate 15-20 invite codes manually via SQL or a quick admin script (enough for your first 10 members plus buffer)
+*Project initialisation (pulled forward from Phase 1.3 — see DEC-013):*
+- [x] ⚠️ Initialise Vite + React + TypeScript project with all dependencies (`@supabase/supabase-js`, `react-router-dom`) — ✅ Completed: 20 Feb 2026, 19:00
+- [x] Create Supabase client utility (`src/lib/supabase.ts`) using `VITE_` prefixed env vars — ✅ Completed: 20 Feb 2026, 19:05
+- [x] Create global CSS with CSS custom properties for theming (`src/global.css`) — ✅ Completed: 20 Feb 2026, 19:05
+
+*Auth UI and routing:*
+- [x] Build registration page UI: invite code, email, password (min 12 chars), display name, optional X handle — ✅ Completed: 20 Feb 2026, 19:15
+- [x] Build login page UI: email and password fields, sign-in button, link to register — ✅ Completed: 20 Feb 2026, 19:15
+- [x] Build placeholder dashboard page (post-login landing with profile info and logout) — ✅ Completed: 20 Feb 2026, 19:15
+- [x] Create `useAuth` hook: tracks Supabase session, loads profile, re-renders on auth state changes — ✅ Completed: 20 Feb 2026, 19:10
+- [x] Build protected route wrapper: redirects to /login if no session or unverified profile — ✅ Completed: 20 Feb 2026, 19:10
+- [x] Set up React Router with routes: /login, /register, / (protected dashboard), catch-all redirect — ✅ Completed: 20 Feb 2026, 19:15
+- [x] Verify TypeScript compiles with zero errors (`npx tsc --noEmit`) — ✅ Completed: 20 Feb 2026, 19:20
+
+*Supabase Auth configuration:*
+- [x] ⚠️ Configure Supabase Auth: disable email confirmation for MVP (bypassed server-side via Admin API `email_confirm: true` in Edge Function) — ✅ Completed: 20 Feb 2026, 19:25
+
+*Atomic registration Edge Function (DEC-014):*
+- [x] Create `register` Edge Function: single atomic function that validates invite code, creates user via Admin API, updates profile, and increments code usage — ✅ Completed: 20 Feb 2026, 19:30
+- [x] Deploy `register` Edge Function to Supabase via dashboard editor — ✅ Completed: 20 Feb 2026, 19:40
+- [x] Wire registration page to call Edge Function via `supabase.functions.invoke('register', ...)` then auto-sign-in on success — ✅ Completed: 20 Feb 2026, 19:15
+
+*Seed data:*
+- [x] Generate 20 invite codes via SQL: 2 admin (100 uses), 3 team (25 uses), 15 standard (5 uses each) — ✅ Completed: 20 Feb 2026, 19:42
+- [x] Save seed SQL to `supabase/seeds/001_invite_codes.sql` — ✅ Completed: 20 Feb 2026, 19:45
+
+*Testing:*
+- [x] Test: register with valid invite code → 200, success, user created with correct profile data — ✅ Completed: 20 Feb 2026, 19:48
+- [x] Test: register with invalid invite code → 400, generic error (no info leakage) — ✅ Completed: 20 Feb 2026, 19:49
+- [x] Test: register with duplicate email → 400, "email may already be in use" — ✅ Completed: 20 Feb 2026, 19:50
+- [x] Test: register with short password (< 12 chars) → 400, "Password must be at least 12 characters" — ✅ Completed: 20 Feb 2026, 19:51
+- [ ] Test: login with registered credentials → session created, redirected to dashboard
+- [ ] Test: logout → session cleared, redirected to login
+- [ ] Test: session persistence → close and reopen app, still logged in
+
+*Commit:*
 - [ ] Commit and push: `git commit -m "Phase 1.2: Auth, invite code gating, and registration flow"`
 
 ---
@@ -117,7 +139,7 @@ Everything we build serves this. Every goal, every phase, every task is measured
 
 **Tasks:**
 
-- [ ] ⚠️ Initialise the frontend project: React with Vite (or Next.js — decision to be made and logged in DECISIONS.md)
+- [x] ⚠️ Initialise the frontend project: Vite + React + TypeScript (DEC-013) — pulled forward to Phase 1.2 — ✅ Completed: 20 Feb 2026, 19:00
 - [ ] Create `manifest.json` with: app name ("Restore Britain"), short name, start URL, display mode `standalone`, background colour, theme colour (from brand assets), icons in required sizes (192x192, 512x512)
 - [ ] Create app icons from Restore Britain logo — 192x192 and 512x512 PNG files
 - [ ] Register a basic service worker using Workbox: precache the app shell (HTML, CSS, JS bundles), cache-first strategy for static assets
