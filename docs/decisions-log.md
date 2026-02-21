@@ -23,6 +23,87 @@ Each entry follows this structure:
 
 ## Active Decisions
 
+### DEC-021: Placeholder logo and navy primary colour
+- **Date:** 20 February 2026
+- **Context:** Official brand assets have not yet been received from Restore Britain. Dennis created a placeholder logo — a white UK silhouette on a navy blue background — to use in the interim.
+- **Decision:** Adopt the placeholder logo for all icon sizes (favicon, 192px, 512px PWA icons) and the app header. Extract the navy blue (`#051e40`) from the logo as the primary brand colour across the entire app — header, PWA theme, links, active tab indicators. This replaces the previous generic blue (`#2563eb`).
+- **Reasoning:** Having a recognisable identity, even a placeholder one, makes the app feel more cohesive than generic blue. The navy is dark, professional, and carries authority. When official assets arrive (Phase 1.8), we swap the images and update the CSS custom properties — the architecture is already in place.
+- **Alternatives considered:** Wait for official assets (rejected — delays the visual identity indefinitely), use a different colour from the logo (rejected — the navy is the only real colour and it works well).
+- **Impact:** `global.css` (`--colour-primary`), `manifest.json`, `index.html` theme-color meta, `brand/theme.json`, all icon files, `AppShell.tsx` header logo. Service worker cache bumped to `rb-v3`.
+- **Status:** Active — will be superseded by Phase 1.8 when official assets arrive.
+
+### DEC-020: Remove Shetland and Orkney from map GeoJSON
+- **Date:** 20 February 2026
+- **Context:** The Scotland GeoJSON feature included 120 polygon parts spanning from mainland Scotland up to Shetland at 60.8°N. On mobile viewports, this pulled the map's centre of gravity far north-east, leaving the map poorly framed with too much empty sea visible. The distant island clusters were disproportionately affecting the viewport for a feature (regional overview) where they add no value.
+- **Decision:** Remove all Scotland polygon parts where the minimum latitude exceeds 58.75°N. This cuts 37 polygons (Shetland and Orkney) while preserving the entire mainland (which peaks at 58.67°N) and the Hebrides / western islands. UK_BOUNDS updated to `[1.8, 59.2]` NE corner, MAX_BOUNDS tightened to `[3, 60]`.
+- **Reasoning:** The map exists to let users identify and select their region. Shetland and Orkney are visually insignificant at the zoom levels we support (min 4.5) and Scotland remains a single selectable region regardless. Removing them dramatically improves map framing on mobile.
+- **Alternatives considered:** Inset map for Shetland/Orkney (rejected — complex UI for no user value at MVP), keeping them and adjusting bounds manually (rejected — the scatter of tiny islands still distorts fitBounds calculations), moving them closer to mainland as a cartographic convention (rejected — misleading).
+- **Impact:** `public/data/uk-regions.geojson` (Scotland reduced from 120 to 83 polygons, file size reduced from 172KB to 162KB), `RegionMap.tsx` (UK_BOUNDS and MAX_BOUNDS updated).
+- **Status:** Active
+
+### DEC-019: Pre-blended opaque fills to eliminate MapLibre diagonal line artefacts
+- **Date:** 21 February 2026
+- **Context:** Diagonal lines appeared across filled polygon regions (most visible on Scotland and Wales). This is a known, long-standing issue in MapLibre/Mapbox GL JS (tracked in mapbox/mapbox-gl-js#7023). Root cause: with `fill-opacity < 1.0`, WebGL alpha-composites each individual triangle from earcut triangulation. Where triangles share edges or overlap by sub-pixel amounts (GPU floating-point rounding), alpha is applied twice, creating a visible darker seam. Disabling `fill-antialias` alone did not fix it — the artefact is fundamentally an alpha compositing problem, not an antialiasing one.
+- **Decision:** Pre-blend all region colours with the sea background (`#dbe9f4`) to produce solid RGB values that look identical to the original semi-transparent colours, then render at `fill-opacity: 1.0`. Formula: `solid = originalColour × 0.85 + seaColour × 0.15`. Also keep `fill-antialias: false` as belt-and-braces.
+- **Reasoning:** With fully opaque fills, there is zero alpha compositing — triangle seams cannot produce visible artefacts regardless of geometry complexity. The pre-blended colours are mathematically equivalent, so the visual result is identical. No external dependencies, no runtime overhead, no GeoJSON changes.
+- **Alternatives considered:** `fill-antialias: false` alone (tried — did not fix it), winding order correction (tried — did not fix it), reducing polygon complexity (would lose coastline detail), using a tile provider with pre-rendered fills (adds dependency and network requests).
+- **Impact:** `regionColours.ts` — all colour values updated to pre-blended equivalents. `RegionMap.tsx` — `fill-opacity: 1.0` and `fill-antialias: false` on both fill layers. Verified artefact-free on iPhone.
+- **Status:** Active
+
+### DEC-018: GeoJSON winding order fix for MapLibre rendering
+- **Date:** 20 February 2026
+- **Context:** After implementing the interactive map, diagonal line artifacts appeared across Scotland, Wales, and other complex polygon regions. Investigation revealed all 174 polygon rings in the GeoJSON file had incorrect winding order — outer rings were clockwise (CW) instead of counter-clockwise (CCW), violating the RFC 7946 GeoJSON specification. MapLibre's earcut triangulation algorithm assumes correct winding and produces degenerate triangles when rings are reversed, creating visible diagonal edge artifacts.
+- **Decision:** Fix the GeoJSON data in-place using a Python script that applies the shoelace formula to detect winding direction and reverses any incorrectly wound rings. Outer rings set to CCW, inner rings (holes) set to CW, per RFC 7946. Also cleaned 3 duplicate consecutive vertices found during analysis.
+- **Reasoning:** The root cause was in the source data, not the rendering code. The ONS boundary data and the Douglas-Peucker simplification both preserved the original (incorrect) winding order. Fixing the data once is cleaner than adding a runtime rewind step in the rendering pipeline.
+- **Alternatives considered:** Runtime rewind using `@mapbox/geojson-rewind` npm package (rejected — adds a dependency for a one-time data issue), ignoring the artifacts (rejected — visually distracting, especially on Scotland with 120 polygon parts), re-downloading source data (wouldn't help — ONS data has the same winding issue).
+- **Impact:** `public/data/uk-regions.geojson` updated. All 12 features now RFC 7946 compliant. No code changes needed — the fix is purely in the data file. File size unchanged at ~172 KB.
+- **Status:** Active
+
+### DEC-017: Defer "Find My Region" geolocation to later phase
+- **Date:** 20 February 2026
+- **Context:** The initial Phase 1.4 plan included a "Find My Region" button that uses the Geolocation API to auto-detect the user's region via point-in-polygon testing. After building it, the decision was made to remove it from the MVP and defer it.
+- **Decision:** Remove the FindMyRegionButton component and point-in-polygon utility from the active codebase. Users select their region manually by tapping the map. Geolocation auto-select may be revisited when constituency-level detail is added in a later phase.
+- **Reasoning:** For an MVP with only 12 large regions, manual selection is trivially easy — users know which region they're in. The geolocation button adds UI clutter and complexity (permission prompts, error handling for denied/unavailable location) that isn't justified at this scale. It becomes more valuable when the map shows 650 constituencies and users genuinely need help finding their local area.
+- **Alternatives considered:** Keeping the button but making it less prominent (rejected — still adds complexity for marginal value), moving it to the profile/onboarding flow instead of the map (rejected — same complexity, different location).
+- **Impact:** `FindMyRegionButton.tsx` and `pointInPolygon.ts` are dead code to be deleted. DEC-016 (point-in-polygon algorithm choice) is deferred alongside this decision. No runtime impact — the button was already removed from the component tree.
+- **Status:** Active
+
+### DEC-016: Custom ray-casting point-in-polygon instead of Turf.js
+- **Date:** 20 February 2026
+- **Context:** The "Find My Region" geolocation feature needs to determine which of the 12 regions contains the user's coordinates. This requires a point-in-polygon test.
+- **Decision:** Implement a custom ray-casting algorithm (~30 lines of TypeScript) that handles both Polygon and MultiPolygon geometries, including polygon holes. No external dependency.
+- **Reasoning:** Turf.js `@turf/boolean-point-in-polygon` would add ~50 KB gzipped for a single function we can write in 30 lines. The ray-casting algorithm is well-understood, mathematically simple, and our implementation handles all the GeoJSON geometry types we need (Polygon, MultiPolygon, rings with holes). Zero maintenance burden from an external dependency for a trivial algorithm.
+- **Alternatives considered:** Turf.js (rejected — disproportionate dependency size for one function), server-side lookup via Supabase RPC (rejected — adds latency and requires network, defeats offline capability), postcode-to-region lookup table (rejected — less accurate than actual polygon containment, doesn't work for users who haven't entered a postcode yet).
+- **Impact:** `src/components/map/pointInPolygon.ts` is a standalone utility with no dependencies. Can be unit tested independently. Used by FindMyRegionButton.
+- **Status:** Deferred — see DEC-017. Code exists but is not imported or used. Will be revisited if geolocation is re-added in a later phase.
+
+### DEC-015: Tile-free map using MapLibre GL JS with GeoJSON on plain background
+- **Date:** 20 February 2026
+- **Context:** The interactive map needs to display 12 UK regions as coloured polygons. A traditional tile-based map (OpenStreetMap, Mapbox, etc.) would add visual noise (roads, labels, terrain) that distracts from the regional boundaries, requires a tile provider API key, and creates an external runtime dependency.
+- **Decision:** Use MapLibre GL JS with a completely custom style: a solid sea-blue background colour (`#dbe9f4`) with GeoJSON polygons rendered directly on top. No tile provider. The GeoJSON data is a static file (`public/data/uk-regions.geojson`, 172 KB) precached by the service worker for offline use. Boundary data sourced from the ONS Open Geography Portal (December 2024 boundaries), simplified using Douglas-Peucker algorithm to match BUC (Ultra Generalised Clipped) vertex density.
+- **Reasoning:** A tile-free map is faster to load (no tile requests), works fully offline, looks cleaner for a choropleth-style regional map, and has zero ongoing API costs. MapLibre provides all the interaction features we need (pinch-to-zoom, pan with inertia, click events, flyTo animations) without any tile provider dependency. The 172 KB GeoJSON file is smaller than a single tile response.
+- **Alternatives considered:** OpenStreetMap tiles via MapLibre (rejected — visual noise, external dependency, API costs at scale), Leaflet.js (rejected — SVG rendering is less performant than MapLibre's WebGL for complex polygons), D3.js (rejected — no built-in pinch-to-zoom/pan, would need to build all interaction from scratch), static SVG image (rejected — no zoom/pan interaction).
+- **Impact:** MapLibre GL JS added as only new dependency (~400 KB gzipped). Map works fully offline after first load. No external API keys or tile provider accounts needed. Region colours and styles are placeholder neutrals pending brand integration in Phase 1.8.
+- **Status:** Active
+
+### DEC-014: Atomic registration via single Edge Function
+- **Date:** 20 February 2026
+- **Context:** User registration involves multiple steps — validating the invite code, creating the auth user, populating the profile, and incrementing the invite code usage counter. If any step fails partway through, data can be left in an inconsistent state (e.g., auth user created but no profile, or invite code not decremented).
+- **Decision:** Handle the entire registration flow in a single Supabase Edge Function (`register`) that runs server-side with the service role key. The function validates the invite code, creates the user via the Admin API (with `email_confirm: true` to bypass email verification for MVP), updates the profile, and increments invite code usage — all in one request. If any step fails, earlier steps are rolled back manually within the function.
+- **Reasoning:** A single atomic function eliminates race conditions and partial-failure states. It also keeps the service role key server-side (never exposed to the client) and centralises all registration logic in one auditable place.
+- **Alternatives considered:** Client-side multi-step registration calling Supabase directly (rejected — exposes service role key or requires multiple RLS policy workarounds, and partial failures leave orphaned data). Database-level transaction via RPC function (rejected — Supabase Auth user creation can't be done inside a PostgreSQL transaction, it requires the Admin API).
+- **Impact:** Registration page calls a single Edge Function endpoint. All invite code validation and user creation logic lives server-side. Client only needs the anon key.
+- **Status:** Active
+
+### DEC-013: Frontend project initialisation pulled forward to Phase 1.2
+- **Date:** 20 February 2026
+- **Context:** Phase 1.2 (Auth & Membership Gating) requires a working frontend to build the login/registration UI, but the original plan had frontend initialisation in Phase 1.3 (PWA Shell).
+- **Decision:** Pull the Vite + React + TypeScript project initialisation into Phase 1.2 so that auth UI work can begin immediately. Phase 1.3 then focuses purely on PWA features (manifest, service worker, app shell layout) rather than project scaffolding.
+- **Reasoning:** Auth UI can't be built without a frontend project. Keeping project init in Phase 1.3 would mean Phase 1.2 has no way to create the registration and login pages. The dependency is obvious — the frontend must exist before any UI work can happen.
+- **Alternatives considered:** Building auth as a purely backend/API phase with no UI (rejected — testing auth without a UI is possible but slower and less useful for validating the real user flow).
+- **Impact:** Phase 1.2 now includes `npm create vite`, dependency installation, and Supabase client setup. Phase 1.3 scope reduced to PWA-specific work only.
+- **Status:** Active
+
 ### DEC-012: GitHub as remote repository host
 - **Date:** 20 February 2026
 - **Context:** The project needs a remote Git repository for backup, collaboration, and future CI/CD integration.
@@ -148,6 +229,6 @@ Each entry follows this structure:
 
 ---
 
-*Document version: 0.2 — Added DEC-011 (Git version control)*
+*Document version: 0.4 — Added DEC-019 (fill-antialias fix), DEC-020 (Shetland/Orkney removal), DEC-021 (placeholder logo and navy colour)*
 *Last updated: February 2026*
 *Author: Dennis Stevens & Claude (AI-assisted)*

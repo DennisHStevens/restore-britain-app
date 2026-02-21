@@ -39,7 +39,7 @@ export function AppShell({ children }: AppShellProps) {
       {/* Header */}
       <header className="app-header">
         <div className="app-header-content">
-          <div className="app-header-logo">RB</div>
+          <img src="/icons/rb-logo-40.png" alt="RB" className="app-header-logo" />
           <span className="app-header-title">Restore Britain</span>
         </div>
       </header>

@@ -1,18 +1,19 @@
 {
   "brand": "Restore Britain",
-  "version": "0.1",
+  "version": "0.2",
   "lastUpdated": "2026-02-20",
-  "status": "PLACEHOLDER — replace all values with official Restore Britain brand assets",
+  "status": "PARTIAL — primary navy from placeholder logo. Replace with official assets when received.",
 
   "colours": {
-    "primary": "#000000",
-    "primaryLight": "#000000",
-    "primaryDark": "#000000",
+    "primary": "#051e40",
+    "primaryLight": "#0d3a73",
+    "primaryDark": "#030f20",
+    "primaryHover": "#0a2d5c",
     "secondary": "#000000",
     "secondaryLight": "#000000",
     "secondaryDark": "#000000",
     "accent": "#000000",
-    "background": "#FFFFFF",
+    "background": "#f5f5f5",
     "backgroundAlt": "#F5F5F5",
     "surface": "#FFFFFF",
     "text": "#1A1A1A",
@@ -27,7 +28,7 @@
       "regionFillHover": "#000000",
       "regionFillSelected": "#000000",
       "regionBorder": "#FFFFFF",
-      "seaBackground": "#E8F0FE",
+      "seaBackground": "#dbe9f4",
       "landBackground": "#F0F0F0"
     }
   },
@@ -69,8 +70,8 @@
   },
 
   "pwa": {
-    "themeColour": "#000000",
-    "backgroundColour": "#FFFFFF",
-    "splashScreenColour": "#000000"
+    "themeColour": "#051e40",
+    "backgroundColour": "#051e40",
+    "splashScreenColour": "#051e40"
   }
 }

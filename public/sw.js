@@ -14,12 +14,14 @@
  * Cache version: bump CACHE_VERSION to force a full cache refresh on deploy.
  */
 
-const CACHE_VERSION = 'rb-v1';
+const CACHE_VERSION = 'rb-v3';
 const PRECACHE_URLS = [
   '/',
   '/favicon.png',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
+  '/icons/icons/icon-192.png',
+  '/icons/icons/icon-512.png',
+  '/icons/rb-logo-40.png',
+  '/data/uk-regions.geojson',
 ];
 
 // Install: precache the shell

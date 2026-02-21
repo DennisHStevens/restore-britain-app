@@ -164,26 +164,29 @@ Everything we build serves this. Every goal, every phase, every task is measured
 
 **Estimated time:** 2-3 days (this is the highest-risk phase — GeoJSON sourcing and rendering can be fiddly)
 
-#### Milestone: The map renders all ~12 UK regions as distinct coloured polygons on a clean base map. The user can pinch-to-zoom and pan smoothly with native-feeling inertia. Tapping a region highlights it and triggers the region detail view (Phase 1.5). The map loads in under 2 seconds on 4G. A "Find My Region" button uses geolocation to centre the map on the user's location.
+#### Milestone: The map renders all ~12 UK regions as distinct coloured polygons on a clean base map. The user can pinch-to-zoom and pan smoothly with native-feeling inertia. Tapping a region highlights it and triggers the region detail view (Phase 1.5). The map loads in under 2 seconds on 4G. The map opens framing the entire UK via fitBounds, adapting to any viewport.
 
 **Tasks:**
 
-- [ ] ⚠️ Source GeoJSON boundary data for UK regions from the ONS Open Geography Portal — need polygons for the ~12 regions (these may need to be derived by merging constituency or local authority boundaries into regional groups)
-- [ ] Evaluate GeoJSON file size and simplify polygons if necessary using mapshaper.org (reduce coordinate density to keep file under 500KB while maintaining visual accuracy)
-- [ ] Install and configure MapLibre GL JS in the React project
-- [ ] Create a custom map style: muted base map (no distracting labels or features), clean coastline, minimal land/sea contrast. Brand colours for region fills.
-- [ ] Render all ~12 regions as filled polygons with distinct colours and visible borders
-- [ ] Implement tap/click interaction: tapping a region highlights it (colour change or border emphasis) and stores the selected region ID in state
-- [ ] Implement pinch-to-zoom with smooth momentum/inertia (MapLibre handles this natively but may need gesture configuration for mobile)
-- [ ] Implement pan with momentum
-- [ ] Set appropriate min/max zoom levels: min zoom shows the entire UK, max zoom shows useful detail without going too deep (regions, not streets)
-- [ ] Add a "Find My Region" button that uses the Geolocation API to centre the map on the user's position and auto-select the region containing their coordinates
-- [ ] Implement a point-in-polygon check to determine which region contains the user's geolocation (or use a postcode-to-region lookup)
-- [ ] Cache the GeoJSON data in the service worker after first load so subsequent visits don't re-download it
-- [ ] Test on mobile: verify 60fps panning and zooming, no stuttering, no white tiles during fast panning
-- [ ] Test: tap each of the 12 regions and confirm correct selection and highlight
-- [ ] Test: "Find My Region" correctly identifies the user's region (test with spoofed locations for regions outside your actual location)
-- [ ] Commit and push: `git commit -m "Phase 1.4: Interactive map with regional boundaries and geolocation"`
+- [x] ⚠️ Source GeoJSON boundary data for UK regions from the ONS Open Geography Portal — 9 English regions (Regions EN BUC) + 3 devolved nations (Countries UK BUC, excluding England) — ✅ Completed: 20 Feb 2026, 22:38
+- [x] Evaluate GeoJSON file size and simplify polygons — used Douglas-Peucker algorithm to simplify country boundaries from full-detail (225K vertices) to BUC-equivalent density (~3.8K vertices). Final merged file: 172 KB for 12 features. — ✅ Completed: 20 Feb 2026, 22:42
+- [x] Install and configure MapLibre GL JS in the React project — ✅ Completed: 20 Feb 2026, 22:43
+- [x] Create a custom map style: tile-free, sea-blue background (#dbe9f4), GeoJSON polygons rendered directly (DEC-015) — ✅ Completed: 20 Feb 2026, 22:45
+- [x] Render all 12 regions as filled polygons with distinct muted colours and white borders — ✅ Completed: 20 Feb 2026, 22:45
+- [x] Implement tap/click interaction: tapping a region highlights it (brighter fill via separate highlight layer) and stores selected region ID in state — ✅ Completed: 20 Feb 2026, 22:45
+- [x] Implement pinch-to-zoom with smooth momentum/inertia — MapLibre handles natively, rotation disabled for choropleth clarity — ✅ Completed: 20 Feb 2026, 22:45
+- [x] Implement pan with momentum — MapLibre native, bounded to UK area (-12,49 to 3,61) — ✅ Completed: 20 Feb 2026, 22:45
+- [x] Set appropriate min/max zoom levels: min 4.5 (full UK), max 8 (regional detail) — ✅ Completed: 20 Feb 2026, 22:45
+- ~~Add "Find My Region" button~~ — **Deferred** to Phase 1.5 or later. Geolocation auto-select removed to simplify the map for MVP; users select their region manually. May revisit when constituency-level detail is added. See DEC-017.
+- ~~Implement point-in-polygon check~~ — **Deferred** alongside Find My Region. Dead code (`pointInPolygon.ts`, `FindMyRegionButton.tsx`) to be deleted. See DEC-017.
+- [x] Fix GeoJSON winding order — all 174 polygon rings had incorrect winding (CW instead of CCW). Fixed via shoelace-formula rewind script. See DEC-018. — ✅ Completed: 20 Feb 2026, 23:20
+- [x] Fix diagonal rendering lines — root cause was alpha compositing: `fill-opacity < 1.0` causes WebGL to double-blend at earcut triangle seams. Fixed by pre-blending colours with sea background and rendering at `fill-opacity: 1.0`. See DEC-019. — ✅ Completed: 21 Feb 2026, 13:45
+- [x] Test on mobile: 60fps panning/zooming confirmed, no rendering artefacts — ✅ Completed: 21 Feb 2026, 13:50
+- [x] Remove Shetland and Orkney islands — 37 polygon parts removed from Scotland to prevent map skewing north-east on mobile. UK_BOUNDS and MAX_BOUNDS tightened. See DEC-020. — ✅ Completed: 20 Feb 2026, 23:35
+- [x] Cache GeoJSON data in service worker — added to PRECACHE_URLS, bumped CACHE_VERSION to rb-v3 — ✅ Completed: 20 Feb 2026, 22:46
+- [ ] Test on mobile: verify 60fps panning and zooming, no stuttering, no white tiles during fast panning — Dennis to test on iPhone
+- [x] Test: tap regions and confirm correct selection and highlight — verified on desktop via browser, all 12 regions selectable — ✅ Completed: 20 Feb 2026, 22:50
+- [ ] Commit and push: `git commit -m "Phase 1.4: Interactive map with regional boundaries"`
 
 ---
 
