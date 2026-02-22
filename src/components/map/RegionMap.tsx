@@ -7,26 +7,27 @@
  *
  * Features:
  * - Distinct muted colour per region via a match expression
- * - Tap/click to select a region (highlight + floating label)
+ * - Tap/click to select a region (opens bottom sheet via callback)
  * - Smooth pinch-to-zoom and pan with inertia (MapLibre native)
  * - Bounded to the UK area with sensible zoom limits
- * - Exposes selected region via onRegionSelect callback for Phase 1.5
+ * - No selection outline or floating label — the bottom sheet handles
+ *   all region detail display now.
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import {
   REGION_COLOURS,
-  REGION_COLOURS_HIGHLIGHT,
-  REGION_CENTROIDS,
   REGION_NAMES,
 } from './regionColours';
 
 interface RegionMapProps {
-  /** Called when a region is tapped/clicked. Phase 1.5 will use this to open the bottom sheet. */
+  /** Called when a region is tapped/clicked — opens the bottom sheet. */
   onRegionSelect?: (regionId: string, regionName: string) => void;
+  /** Called when the user taps the sea (not a region) — dismisses bottom sheet. */
+  onBackgroundClick?: () => void;
 }
 
 /** Sea colour — soft blue background behind the land polygons */
@@ -35,7 +36,6 @@ const SEA_COLOUR = '#dbe9f4';
 /** White borders between regions */
 const BORDER_COLOUR = '#ffffff';
 const BORDER_WIDTH = 1.5;
-const BORDER_WIDTH_HIGHLIGHT = 3;
 
 const MIN_ZOOM = 4.5;
 const MAX_ZOOM = 8;
@@ -77,39 +77,19 @@ function buildColourExpression(
   return entries as unknown as maplibregl.ExpressionSpecification;
 }
 
-export function RegionMap({ onRegionSelect }: RegionMapProps) {
+export function RegionMap({ onRegionSelect, onBackgroundClick }: RegionMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
-  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
-  const [labelInfo, setLabelInfo] = useState<{
-    name: string;
-    x: number;
-    y: number;
-  } | null>(null);
 
   /**
-   * Select a region programmatically — used by the tap handler.
-   * Updates highlight state and positions the label.
+   * Handle a tap on a region — just notify the parent so it can open
+   * the bottom sheet. No local selection state, no highlight, no label.
    */
-  const selectRegion = useCallback(
+  const handleRegionTap = useCallback(
     (regionId: string) => {
-      const map = mapRef.current;
-      if (!map) return;
-
       const name = REGION_NAMES[regionId];
       if (!name) return;
-
-      setSelectedRegion(regionId);
-
-      /* Notify parent (for Phase 1.5 bottom sheet) */
       onRegionSelect?.(regionId, name);
-
-      /* Position floating label at the region's centroid projected to screen coords */
-      const centroid = REGION_CENTROIDS[regionId];
-      if (centroid) {
-        const point = map.project(centroid);
-        setLabelInfo({ name, x: point.x, y: point.y });
-      }
     },
     [onRegionSelect]
   );
@@ -220,32 +200,6 @@ export function RegionMap({ onRegionSelect }: RegionMapProps) {
         },
       });
 
-      /* Highlighted region fill — sits above the base fill, initially hidden.
-       * Same opaque approach as the base layer — pre-blended colours at 1.0. */
-      map.addLayer({
-        id: 'region-highlight-fill',
-        type: 'fill',
-        source: 'regions',
-        paint: {
-          'fill-color': buildColourExpression(REGION_COLOURS_HIGHLIGHT),
-          'fill-opacity': 1.0,
-          'fill-antialias': false,
-        },
-        filter: ['==', ['get', 'id'], ''],
-      });
-
-      /* Highlighted region border — thicker, sits above the base borders */
-      map.addLayer({
-        id: 'region-highlight-border',
-        type: 'line',
-        source: 'regions',
-        paint: {
-          'line-color': BORDER_COLOUR,
-          'line-width': BORDER_WIDTH_HIGHLIGHT,
-        },
-        filter: ['==', ['get', 'id'], ''],
-      });
-
       /* Pointer cursor on hover over regions */
       map.on('mouseenter', 'region-fills', () => {
         map.getCanvas().style.cursor = 'pointer';
@@ -254,7 +208,7 @@ export function RegionMap({ onRegionSelect }: RegionMapProps) {
         map.getCanvas().style.cursor = '';
       });
 
-      /* Tap/click handler — select the clicked region */
+      /* Tap/click handler — notify parent to open bottom sheet */
       map.on('click', 'region-fills', (e) => {
         if (!e.features || e.features.length === 0) return;
 
@@ -262,35 +216,17 @@ export function RegionMap({ onRegionSelect }: RegionMapProps) {
         const regionId = feature.properties?.id as string;
         if (!regionId) return;
 
-        selectRegion(regionId);
+        handleRegionTap(regionId);
       });
 
-      /* Clicking the sea (not a region) deselects */
+      /* Clicking the sea (not a region) dismisses bottom sheet */
       map.on('click', (e) => {
         const features = map.queryRenderedFeatures(e.point, {
           layers: ['region-fills'],
         });
         if (features.length === 0) {
-          setSelectedRegion(null);
-          setLabelInfo(null);
+          onBackgroundClick?.();
         }
-      });
-    });
-
-    /* Update label position when the map moves (pan/zoom) */
-    map.on('move', () => {
-      setSelectedRegion((current) => {
-        if (!current) return null;
-        const centroid = REGION_CENTROIDS[current];
-        if (centroid) {
-          const point = map.project(centroid);
-          setLabelInfo({
-            name: REGION_NAMES[current],
-            x: point.x,
-            y: point.y,
-          });
-        }
-        return current;
       });
     });
 
@@ -300,50 +236,12 @@ export function RegionMap({ onRegionSelect }: RegionMapProps) {
       map.remove();
       mapRef.current = null;
     };
-    // selectRegion is stable via useCallback, safe to include
-  }, [selectRegion]);
-
-  /**
-   * When selectedRegion changes, update the highlight layer filters
-   * to show/hide the highlight for the correct region.
-   */
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !map.isStyleLoaded()) return;
-
-    const filterId = selectedRegion || '';
-
-    if (map.getLayer('region-highlight-fill')) {
-      map.setFilter('region-highlight-fill', [
-        '==',
-        ['get', 'id'],
-        filterId,
-      ]);
-    }
-    if (map.getLayer('region-highlight-border')) {
-      map.setFilter('region-highlight-border', [
-        '==',
-        ['get', 'id'],
-        filterId,
-      ]);
-    }
-  }, [selectedRegion]);
+    // handleRegionTap is stable via useCallback, safe to include.
+    // onBackgroundClick is also stable (useCallback in parent).
+  }, [handleRegionTap, onBackgroundClick]);
 
   return (
     <div className="region-map-container" ref={containerRef}>
-      {/* Floating region name label */}
-      {labelInfo && (
-        <div
-          className="region-label"
-          style={{
-            left: labelInfo.x,
-            top: labelInfo.y,
-          }}
-        >
-          {labelInfo.name}
-        </div>
-      )}
-
       {/* Minimal ONS data attribution */}
       <div className="map-attribution">
         Contains OS data &copy; Crown copyright

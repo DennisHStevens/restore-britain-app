@@ -29,12 +29,12 @@ export function Dashboard() {
     <div style={styles.container}>
       <div style={styles.card}>
         <h1 style={styles.title}>Restore Britain</h1>
-        <p style={styles.subtitle}>Welcome back, {profile?.display_name || 'Member'}.</p>
+        <p style={styles.subtitle}>Welcome back, @{profile?.username || 'member'}.</p>
 
         <div style={styles.profileSection}>
           <div style={styles.field}>
-            <span style={styles.fieldLabel}>Display Name</span>
-            <span>{profile?.display_name}</span>
+            <span style={styles.fieldLabel}>Username</span>
+            <span style={{ color: 'var(--colour-primary)', fontWeight: 600 }}>@{profile?.username}</span>
           </div>
           <div style={styles.field}>
             <span style={styles.fieldLabel}>Email</span>

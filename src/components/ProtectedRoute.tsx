@@ -1,15 +1,17 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 /**
  * Wraps any page that requires an authenticated, verified user.
  * - No session → redirect to /login
- * - Session but not verified → redirect to /login (shouldn't happen
- *   with the atomic registration flow, but defence in depth)
+ * - Session but not verified → redirect to /login (defence in depth)
+ * - Session + verified but no region → redirect to /onboarding
+ *   (unless already on the onboarding page — avoids redirect loop)
  * - Loading → show nothing (avoids flash of login page)
  */
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, profile, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -33,6 +35,12 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   // Has session but profile not verified — shouldn't happen, but safe guard
   if (profile && !profile.is_verified) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Verified but no region assigned — redirect to onboarding.
+  // Skip if we're already on the onboarding page to avoid a redirect loop.
+  if (profile && !profile.region_id && location.pathname !== '/onboarding') {
+    return <Navigate to="/onboarding" replace />;
   }
 
   return <>{children}</>;

@@ -74,8 +74,8 @@ Everything we build serves this. Every goal, every phase, every task is measured
 - [x] Write RLS policies for `invite_codes`: only service role can read/write (all invite code operations go through Edge Functions) — ✅ Completed: 20 Feb 2026, 18:18 — No policies = deny all for non-service-role. Confirmed by Security Advisor (info-level note, intentional by design)
 - [x] Test RLS: using the Supabase SQL editor, confirm that an anon-key query returns zero rows from `profiles` and `invite_codes` — ✅ Completed: 20 Feb 2026, 18:28 — All three tables (profiles, invite_codes, regions) return 0 rows as anon role
 - [x] Verify Supabase dashboard shows zero advisory issues, zero errors — ✅ Completed: 20 Feb 2026, 18:34 — Security Advisor: 0 errors, 0 warnings, 1 info (intentional: invite_codes has RLS with no policies by design). Fixed 3 search_path warnings by adding SET search_path = public to all functions.
-- [ ] Commit all Supabase-related work (any migration files, seed scripts, or config): `git commit -m "Phase 1.1: Supabase setup with tables and RLS"`
-- [ ] Push to remote
+- [x] Commit all Supabase-related work (any migration files, seed scripts, or config): `git commit -m "Phase 1.1: Supabase setup with tables and RLS"` — ✅ Completed: 21 Feb 2026, 19:54
+- [x] Push to remote — ✅ Completed: 21 Feb 2026, 19:54
 
 ---
 
@@ -154,7 +154,7 @@ Everything we build serves this. Every goal, every phase, every task is measured
 - [ ] Test on Android: same checks — deferred, no Android device available currently. Will test when device is sourced.
 - [x] Verify there are no horizontal scroll issues, no layout shifts on load, no janky scrolling in content areas — ✅ Completed: 20 Feb 2026, 21:15
 - ~~Apply Restore Britain brand colours and fonts to the shell~~ — moved to Phase 1.8 (awaiting brand assets, not blocking)
-- [ ] Commit and push: `git commit -m "Phase 1.3: PWA shell, manifest, service worker, core layout"`
+- [x] Commit and push: `git commit -m "Phase 1.3: PWA shell, manifest, service worker, core layout"` — ✅ Completed: 21 Feb 2026, 19:54
 
 ---
 
@@ -184,9 +184,9 @@ Everything we build serves this. Every goal, every phase, every task is measured
 - [x] Test on mobile: 60fps panning/zooming confirmed, no rendering artefacts — ✅ Completed: 21 Feb 2026, 13:50
 - [x] Remove Shetland and Orkney islands — 37 polygon parts removed from Scotland to prevent map skewing north-east on mobile. UK_BOUNDS and MAX_BOUNDS tightened. See DEC-020. — ✅ Completed: 20 Feb 2026, 23:35
 - [x] Cache GeoJSON data in service worker — added to PRECACHE_URLS, bumped CACHE_VERSION to rb-v3 — ✅ Completed: 20 Feb 2026, 22:46
-- [ ] Test on mobile: verify 60fps panning and zooming, no stuttering, no white tiles during fast panning — Dennis to test on iPhone
+- [x] Test on mobile: verify 60fps panning and zooming, no stuttering, no white tiles during fast panning — Dennis to test on iPhone — ✅ Completed: 21 Feb 2026, 19:54
 - [x] Test: tap regions and confirm correct selection and highlight — verified on desktop via browser, all 12 regions selectable — ✅ Completed: 20 Feb 2026, 22:50
-- [ ] Commit and push: `git commit -m "Phase 1.4: Interactive map with regional boundaries"`
+- [x] Commit and push: `git commit -m "Phase 1.4: Interactive map with regional boundaries"` — ✅ Completed: 21 Feb 2026, 19:54
 
 ---
 
@@ -200,44 +200,127 @@ Everything we build serves this. Every goal, every phase, every task is measured
 
 **Tasks:**
 
-- [ ] Build the region detail bottom-sheet component: slides up from bottom of screen with smooth animation, can be dismissed by swiping down or tapping the map
-- [ ] Bottom sheet content: region name (large), description, member count (pulled from `regions.member_count`), regional leader info (placeholder text for MVP — "Leader to be announced" unless manually populated)
-- [ ] Add "Join Telegram Group" button: opens the `telegram_group_url` from the region record in a new tab / Telegram app deeplink
-- [ ] Wire up map tap → bottom sheet: tapping a region on the map opens the bottom sheet for that region, tapping a different region switches the content
-- [ ] Implement postcode-to-region assignment: during onboarding (after registration), user enters their postcode. Use the first 1-2 characters of the postcode to map to a region. Build a simple lookup table (e.g., "BS" → South West, "B" → West Midlands, "LS" → Yorkshire, etc.)
-- [ ] Store `postcode_area` and `region_id` on the user's profile after assignment
-- [ ] Update `regions.member_count` via a database trigger when a profile's `region_id` is set or changed
-- [ ] Build the profile page: displays display_name, email (read-only), region name (read-only, with option to change), X handle (linked as `x.com/{handle}`), join date
-- [ ] Build profile edit form: editable fields for display_name and x_handle, save button, success/error feedback
-- [ ] Wire up profile page to the "Profile" tab in the bottom navigation
-- [ ] Test: complete the full flow — register → enter postcode → assigned to correct region → see region on map → tap region → see detail panel with Telegram link → visit profile page → edit display name → save successfully
-- [ ] Commit and push: `git commit -m "Phase 1.5: Region detail view, profiles, postcode assignment"`
+- [x] Build the region detail bottom-sheet component: slides up from bottom of screen with smooth CSS transform animation, swipe-to-dismiss (80px threshold), overlay tap to dismiss. See DEC-022. — ✅ Completed: 21 Feb 2026, 14:00
+- [x] Bottom sheet content: region name (large), description, member count (from `regions.member_count`), regional leader placeholder ("—"), Telegram button. Data fetched from Supabase by mapping feature IDs to region names. — ✅ Completed: 21 Feb 2026, 14:00
+- [x] Add "Join Telegram Group" button: opens `telegram_group_url` from region record, shows "coming soon" placeholder if URL not set — ✅ Completed: 21 Feb 2026, 14:00
+- [x] Wire up map tap → bottom sheet: MapView manages selectedRegionId state, passes onRegionSelect and onBackgroundClick to RegionMap, renders RegionBottomSheet — ✅ Completed: 21 Feb 2026, 14:10
+- [x] Implement postcode-to-region assignment: 124-entry client-side lookup table (121 UK postcode areas + 3 Crown Dependencies) mapping 1-2 letter prefixes to region names. See DEC-023. — ✅ Completed: 21 Feb 2026, 14:20
+- [x] Build onboarding page: standalone page at `/onboarding` with postcode input, live region detection, confirm/skip buttons. Stores `postcode_area` and `region_id` on profile. — ✅ Completed: 21 Feb 2026, 14:25
+- [x] Store `postcode_area` and `region_id` on the user's profile after assignment — ✅ Completed: 21 Feb 2026, 14:25
+- [x] Gate onboarding via ProtectedRoute: redirects to /onboarding if profile exists but region_id is null. Location check prevents redirect loop. — ✅ Completed: 21 Feb 2026, 14:30
+- [x] Write SQL trigger for `regions.member_count` maintenance: BEFORE INSERT OR UPDATE on profiles, auto-increments/decrements with clamp to 0. See DEC-024. Saved to `supabase/migrations/002_member_count_trigger.sql`. — ✅ Completed: 21 Feb 2026, 14:43
+- [x] ⚠️ **Dennis to run:** Execute `002_member_count_trigger.sql` in Supabase SQL Editor, then run the one-time reconciliation query in the comments to sync existing data
+- [x] Profile page enhanced: added region name display (fetched from Supabase), shown between X Handle and Verified fields — ✅ Completed: 21 Feb 2026, 14:35
+- [x] Profile page already built in Phase 1.3 with edit capability for display_name and x_handle, success/error feedback — carried forward
+- [x] Profile page already wired to "Profile" tab in bottom navigation — carried forward from Phase 1.3
+- [x] Test: complete the full flow — register → enter postcode → assigned to correct region → see region on map → tap region → see detail panel with Telegram link → visit profile page → edit display name → save successfully — ✅ Completed: 21 Feb 2026, 19:54
+- [x] Commit and push: `git commit -m "Phases 1.1–1.5"` — ✅ Completed: 21 Feb 2026, 19:56
 
 ---
 
-### Phase 1.6 — Telegram Group Architecture
+### Phase 1.6 — gb/ Boards: In-App Community Forum
 
-**What this phase covers:** Setting up the full Telegram group structure for the MVP — creating the groups, configuring them properly, populating the database with invite links, and ensuring the platform-to-Telegram handoff is seamless. This is the communications backbone.
+**What this phase covers:** Building an in-app discussion forum branded as "gb/ Boards" — replacing the Telegram group architecture entirely. Posts with titles, bodies, and image uploads. Threaded comments. Reddit-style upvote/downvote voting. Sort by Hot, New, and Top. All gated behind membership — only verified members can view or participate. Telegram/X recommended for private messaging but all community discussion lives in-app. Full design doc: `docs/phase-1.6-gb-boards.md`.
 
-**Estimated time:** 0.5-1 day
+**Estimated time:** 2-3 days
 
-#### Milestone: A national Telegram group and at least 2-3 regional Telegram groups exist with proper naming conventions, descriptions, and admin settings. All active group invite links are stored in the `regions` table and the "Join Telegram Group" button on each active region's detail view opens the correct group. A clear naming convention and group setup template exists for scaling to all 12 regions.
+#### Milestone: gb/national board is live. Verified members can create posts (with optional image uploads up to 4 per post), comment on posts (with optional images), upvote/downvote posts and comments, and sort the feed by Hot/New/Top. The "Join Telegram Group" button on the region bottom sheet is replaced with a board link. A "Boards" tab appears in the bottom navigation between Map and Profile. The full flow works on mobile: create post → view post → comment → vote → sort → upload image.
 
 **Tasks:**
 
-- [ ] Define Telegram group naming convention (e.g., "Restore Britain — National", "Restore Britain — West Midlands", "Restore Britain — South West") and log in DECISIONS.md
-- [ ] Create the **National Telegram group**: set name, description ("Official national coordination group for Restore Britain members"), group photo (RB logo)
-- [ ] Configure national group settings: admin-only posting disabled (open discussion), slow mode off, invite link set to not expire, group set to private (invite link required, not publicly searchable)
-- [ ] Create **2-3 regional Telegram groups** for the regions most likely to have early members (based on your network — likely West Midlands, South West, and one other)
-- [ ] Configure each regional group: same settings pattern as national, description includes region name and purpose ("Coordination hub for Restore Britain members in the West Midlands")
-- [ ] Document a **group setup template** — a checklist of settings to apply whenever a new regional group is created, so any admin can replicate the setup consistently. Store in the project docs.
-- [ ] Copy all group invite links into the `regions` table: update each active region's `telegram_group_url` field
-- [ ] Store the national Telegram group link somewhere accessible app-wide (e.g., a `platform_settings` table or hardcoded config for MVP)
-- [ ] Test the full handoff: tap "Join Telegram Group" on a region detail view → Telegram opens (or prompts to install) → correct group is shown → user can join
-- [ ] Test on both iOS and Android: verify Telegram deeplink (`tg://`) works and falls back to web (`t.me/`) if Telegram isn't installed
-- [ ] Assign yourself as admin on all groups. Identify if any of your first 10 members should be co-admins on regional groups.
-- [ ] Create a placeholder group description note in each group pinned message: "Welcome to [Region]. This is the official coordination channel for Restore Britain members in [Region]. More details coming soon."
-- [ ] Commit and push any database updates (telegram_group_url values): `git commit -m "Phase 1.6: Telegram group architecture and database links"`
+*Database (Step 1):*
+- [x] ⚠️ Write migration `supabase/migrations/003_boards_and_posts.sql`: create `boards`, `posts`, `comments`, `votes` tables with all columns, constraints, and indexes — ✅ Completed: 21 Feb 2026, 20:15
+- [x] Add RLS policies to all 4 new tables (verified members can read/write, authors can edit/delete within 15 min window, votes are per-user) — ✅ Completed: 21 Feb 2026, 20:15
+- [x] Create triggers: `comment_count`, `last_comment_at`, `upvote_count`, `post_count`, `updated_at` maintenance — ✅ Completed: 21 Feb 2026, 20:15
+- [x] Create Supabase Storage bucket `board-images` with upload policies (authenticated users, 5MB max, image MIME types only) — ✅ Completed: 21 Feb 2026, 20:15 — bucket creation included in migration SQL via INSERT INTO storage.buckets
+- [x] Seed gb/national board: `INSERT INTO boards (name, slug, description, scope_type) VALUES ('National', 'national', 'The national discussion board for all Restore Britain members.', 'national')` — ✅ Completed: 21 Feb 2026, 20:15
+- [ ] ⚠️ **Dennis to run:** Execute `003_boards_and_posts.sql` in Supabase SQL Editor. The storage bucket is created automatically by the migration SQL.
+- [x] Log decisions DEC-025 through DEC-030 in `decisions-log.md` — ✅ Completed: 21 Feb 2026, 20:27 — Already logged by previous session
+
+*Data API layer (Step 2):*
+- [x] Create `src/lib/boardsApi.ts` — all Supabase queries: `fetchBoards()`, `fetchPosts(boardId, sort, cursor)`, `fetchPost(postId)`, `fetchComments(postId)`, `createPost()`, `createComment()`, `castVote()`, `removeVote()`, `uploadImage()` — ✅ Completed: 21 Feb 2026, 20:18
+
+*Routing & navigation (Step 3):*
+- [x] Add routes to `App.tsx`: `/boards`, `/boards/:slug`, `/boards/:slug/new`, `/boards/:slug/:id` — all inside ProtectedRoute + AppShell — ✅ Completed: 21 Feb 2026, 20:20
+- [x] Add "Boards" tab to `AppShell.tsx` bottom nav (3 tabs: Map | Boards | Profile) — ✅ Completed: 21 Feb 2026, 20:20
+- [x] Update `RegionBottomSheet.tsx`: remove Telegram button, add "View Board" link (or "coming soon" for regions without a board yet) — ✅ Completed: 21 Feb 2026, 20:21
+
+*Board list & board view (Step 4):*
+- [x] Build `BoardList.tsx` — list of all boards (gb/national for MVP), each showing name, description, post count, latest activity — ✅ Completed: 21 Feb 2026, 20:22
+- [x] Build `BoardView.tsx` — post feed with Hot/New/Top sort tabs, post cards, floating "+" compose button, cursor-based pagination — ✅ Completed: 21 Feb 2026, 20:22
+- [x] Build `PostCard.tsx` — reusable post list item: title, author, time-ago, body preview, image thumbnail, upvote count, comment count — ✅ Completed: 21 Feb 2026, 20:22
+- [x] Build `SortTabs.tsx` — Hot | New | Top pill toggle — ✅ Completed: 21 Feb 2026, 20:22
+- [x] Build `TimeAgo.tsx` — timestamp → "2m ago" / "3h ago" / "1d ago" utility — ✅ Completed: 21 Feb 2026, 20:22
+
+*Post detail & comments (Step 5):*
+- [x] Build `NewPost.tsx` — compose screen: title (300 char max), body (auto-expanding textarea), image attach (max 4), post button — ✅ Completed: 21 Feb 2026, 20:24
+- [x] Build `PostDetail.tsx` — full post display with images, vote buttons, comment thread below, sticky comment composer at bottom — ✅ Completed: 21 Feb 2026, 20:24
+- [x] Build `CommentItem.tsx` — single comment: author, time-ago, body, images, upvote/downvote, reply button, reply-to indicator — ✅ Completed: 21 Feb 2026, 20:24
+
+*Voting (Step 6):*
+- [x] Build `VoteButton.tsx` — upvote/downvote arrows with count, optimistic UI (instant update, rollback on error), debounced taps — ✅ Completed: 21 Feb 2026, 20:23
+
+*Image uploads (Step 7):*
+- [x] Build `ImageUploader.tsx` — file pick, client-side resize (max 1200px), EXIF strip via canvas re-export, compress to 80% JPEG, upload to Supabase Storage, return public URL — ✅ Completed: 21 Feb 2026, 20:24
+- [x] Build `ImageCarousel.tsx` — swipeable multi-image display with dot indicators, single image displayed full-width — ✅ Completed: 21 Feb 2026, 20:24
+
+*Polish & testing (Step 8):*
+- [x] Add empty states: "No posts yet — be the first to start a discussion", "No comments yet" — ✅ Completed: 21 Feb 2026, 20:25
+- [x] Add loading skeletons for post list and post detail — ✅ Completed: 21 Feb 2026, 20:25
+- [x] Add error handling for all API calls (toast or inline error messages) — ✅ Completed: 21 Feb 2026, 20:25
+- [ ] Test full flow on iPhone: create post → view post → comment → vote → change sort → upload image → verify images display
+- [ ] Verify RLS: confirm unauthenticated users cannot access any board content
+
+*Username system (replaces display_name — see DEC-031):*
+- [x] Write migration SQL `004_username_replaces_display_name.sql`: add `username` column (3-20 chars, unique case-insensitive), generate placeholders for existing accounts, drop `display_name`, update `handle_new_user()` trigger — ✅ Completed: 21 Feb 2026, 22:00
+- [x] Update `useAuth.tsx` Profile type: `display_name` → `username` — ✅ Completed: 21 Feb 2026, 22:05
+- [x] Update `Register.tsx`: username field replaces display name with live validation — ✅ Completed: 21 Feb 2026, 22:10
+- [x] Update Edge Function `register/index.ts`: `display_name` → `username` — ✅ Completed: 21 Feb 2026, 22:15
+- [x] Update `Profile.tsx`: display and edit @username instead of display_name — ✅ Completed: 21 Feb 2026, 22:20
+- [x] Update `boardsApi.ts`: query `username` instead of `display_name` in all joins — ✅ Completed: 21 Feb 2026, 23:30
+- [x] Update `PostCard.tsx`, `CommentItem.tsx`, `PostDetail.tsx`, `BoardView.tsx`: clickable @username links with `onUsernameClick` callback — ✅ Completed: 21 Feb 2026, 23:50
+- [x] Create `UserProfileModal.tsx`: slide-up bottom sheet showing user profile when @username clicked — ✅ Completed: 22 Feb 2026, 00:10
+- [x] Add CSS for `.username-link` and `.user-profile-*` styles in `global.css` — ✅ Completed: 22 Feb 2026, 00:15
+- [x] Update `Dashboard.tsx`: replace display_name with @username — ✅ Completed: 22 Feb 2026, 00:20
+- [x] Run migration 004 on Supabase: all 3 batches successful, verified with SELECT query — ✅ Completed: 22 Feb 2026, 00:40
+- [x] Log decision DEC-031 in `decisions-log.md` — ✅ Completed: 22 Feb 2026, 00:45
+- [x] ⚠️ Deploy updated Edge Function `register/index.ts` to Supabase (username replaces display_name) — ✅ Completed: 22 Feb 2026, 01:00
+- [x] Verify end-to-end: refresh app, check Profile page shows @username, boards show clickable @username links, UserProfileModal works — ✅ Completed: 22 Feb 2026, 01:05
+
+*Reddit-style threaded comments (see DEC-032):*
+- [x] Rewrite `CommentItem.tsx`: recursive tree rendering with depth-based indentation, vertical threading lines, collapsible branches — ✅ Completed: 22 Feb 2026, 01:30
+- [x] Update `PostDetail.tsx`: add `buildCommentTree()` function to convert flat comments to nested tree, render root comments with `depth={0}` — ✅ Completed: 22 Feb 2026, 01:30
+- [x] Replace flat comment CSS with threaded styles: `.comment-thread`, `.comment-thread-line`, `.comment-collapse-btn`, `.comment-children` — ✅ Completed: 22 Feb 2026, 01:35
+- [x] Verify TypeScript compiles cleanly — ✅ Completed: 22 Feb 2026, 01:40
+- [x] Browser test: threading, indentation, collapse/expand all working correctly — ✅ Completed: 22 Feb 2026, 01:45
+
+*Comment soft-delete and UI improvements (see DEC-033):*
+- [x] Write migration `005_comment_soft_delete_rls.sql`: update RLS policies to allow reading soft-deleted comments and allow authors to delete at any time — ✅ Completed: 22 Feb 2026, 02:00
+- [x] Run migration 005 on Supabase — ✅ Completed: 22 Feb 2026, 02:10
+- [x] Add `deleteComment()` to `boardsApi.ts`: soft-delete sets `deleted_at`, clears body and images — ✅ Completed: 22 Feb 2026, 02:00
+- [x] Update `CommentItem.tsx`: delete button (own comments only), inline "Delete? Yes / No" confirmation, [deleted] placeholder rendering, larger font sizes and interactive hover styles — ✅ Completed: 22 Feb 2026, 02:05
+- [x] Update `PostDetail.tsx`: `handleDeleteComment` callback, pass `onDelete` to CommentItem — ✅ Completed: 22 Feb 2026, 02:05
+- [x] Update `global.css`: larger comment typography (1rem body, 0.9375rem meta), interactive action button styles, delete confirmation styles — ✅ Completed: 22 Feb 2026, 02:05
+- [x] Browser test: post comment → delete button visible on own comment → inline confirmation → confirm delete → [deleted] placeholder renders, comment count decrements — ✅ Completed: 22 Feb 2026, 02:20
+- [x] Log decision DEC-033 in `decisions-log.md` — ✅ Completed: 22 Feb 2026, 02:25
+
+**Role system and moderation (see DEC-034):**
+- [x] Write migration `006_role_system.sql`: role column, CHECK constraint, Dennis as super_admin, helper functions (`role_level`, `get_current_user_role`, `is_current_user_at_least`, `get_current_user_region_id`), updated RLS policies for posts/comments/invite_codes, `protect_role_column` trigger — ✅ Completed: 22 Feb 2026, 20:30
+- [x] Run migration 006 on Supabase, verify Dennis is super_admin — ✅ Completed: 22 Feb 2026, 20:35
+- [x] Update `useAuth.tsx`: `Role` type, `ROLE_LEVEL` map, `role` on Profile interface, `isAtLeast()` and `canModerateBoard()` helpers — ✅ Completed: 22 Feb 2026, 20:45
+- [x] Add `lockPost()` and `softDeletePost()` to `boardsApi.ts` — ✅ Completed: 22 Feb 2026, 20:45
+- [x] Update `CommentItem.tsx`: `canModerate` prop, "Mod Delete" button for moderators — ✅ Completed: 22 Feb 2026, 20:50
+- [x] Update `PostDetail.tsx`: fetch board for scope_id, moderation toolbar (Lock/Unlock, Delete Post), lock icon on title, locked notice — ✅ Completed: 22 Feb 2026, 20:50
+- [x] Update `PostCard.tsx`: lock icon on locked post titles — ✅ Completed: 22 Feb 2026, 20:50
+- [x] Create `AdminPanel.tsx`: member list with roles, role dropdown (super_admin only), invite code viewer with status — ✅ Completed: 22 Feb 2026, 20:55
+- [x] Add `/admin` route in `App.tsx` — ✅ Completed: 22 Feb 2026, 20:55
+- [x] Add moderation, admin panel, lock, and role badge CSS to `global.css` — ✅ Completed: 22 Feb 2026, 20:55
+- [x] TypeScript compile check: zero errors — ✅ Completed: 22 Feb 2026, 21:00
+- [x] Browser test: Lock/Unlock toggles correctly, Mod Delete visible on others' comments, Admin Panel shows members and invite codes — ✅ Completed: 22 Feb 2026, 21:05
+- [x] Log decision DEC-034 in `decisions-log.md` — ✅ Completed: 22 Feb 2026, 21:10
+
+*Commit:*
+- [ ] Commit and push: `git commit -m "Phase 1.6: gb/ Boards — in-app forum with posts, comments, voting, and image uploads"`
 
 ---
 
@@ -344,7 +427,7 @@ Everything we build serves this. Every goal, every phase, every task is measured
 | 1.3 PWA Shell | None | 1 day | **Yes** — can start alongside 1.1 |
 | 1.4 Interactive Map | 1.3 complete | 2-3 days | **Yes** — can start alongside 1.2 |
 | 1.5 Region Detail & Profiles | 1.1, 1.2, 1.4 complete | 1-2 days | No — needs auth, database, and map |
-| 1.6 Telegram Architecture | 1.1, 1.5 complete | 0.5-1 day | **Partially** — group creation can start anytime, DB linking needs 1.1 and 1.5 |
+| 1.6 gb/ Boards & Moderation | 1.1, 1.5 complete | 2-3 days | No — needs auth, database, and map |
 | 1.7 Deployment | 1.1-1.6 complete | 0.5-1 day | No — needs everything working |
 | 1.8 Brand Assets | None (sourcing), 1.3 (integration) | 0.5 day integration | **Yes** — sourcing starts day 1 |
 | 1.9 Onboard Members | 1.7 complete | 3-5 days | Partially — target list can start early |

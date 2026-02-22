@@ -23,6 +23,135 @@ Each entry follows this structure:
 
 ## Active Decisions
 
+### DEC-034: 4-tier global role hierarchy
+- **Date:** 22 February 2026
+- **Context:** The platform needed a moderation system. As the community grows, Dennis alone cannot moderate all content. A role hierarchy allows delegation: regional commanders handle local boards, admins handle global moderation and invite codes, and super_admins have permanent, irrevocable authority. The original database architecture doc suggested 6 roles with scope tables, but after discussion a simpler 4-tier global approach was chosen.
+- **Decision:** Add a `role` text column to `profiles` with 4 tiers: `member` (default) → `commander` (regional moderation) → `admin` (global moderation + invite code access) → `super_admin` (permanent, cannot be demoted). Roles stored as a simple text column with CHECK constraint — no separate tables needed since roles are global. Commander moderation implicitly scoped via their `region_id` matching a board's `scope_id`. Helper functions: `role_level()` maps to integers for comparison, `get_current_user_role()` returns current user's role, `is_current_user_at_least()` checks hierarchy, `get_current_user_region_id()` for commander scoping. A trigger (`protect_role_column`) prevents role changes by non-super_admins and prevents demoting super_admins.
+- **Reasoning:** A text column with CHECK constraint is simpler than an enum or separate roles table, and easier to extend later. Global roles (vs. per-board/per-region) match the platform's flat hierarchy — commanders are regional by nature (their `region_id` on profiles), not by a separate scope assignment. 4 tiers (not 6) avoids unnecessary complexity at this stage. The trigger-based role protection is more robust than relying solely on RLS, since it prevents escalation even through direct SQL if the user somehow bypasses RLS.
+- **Alternatives considered:** (1) Enum type instead of text + CHECK — rejected because altering enums requires migrations and is more fragile. (2) Separate roles table with many-to-many — overkill for global roles. (3) Per-board role assignments — unnecessary complexity, region scoping via profiles is sufficient. (4) 6-tier hierarchy per original docs — simplified to 4 tiers.
+- **Impact:** New migration `006_role_system.sql`. Updated RLS policies on posts (3 UPDATE policies), comments (3 UPDATE policies), invite_codes (1 SELECT policy). Updated `useAuth` hook with `isAtLeast()` and `canModerateBoard()` helpers. New moderation UI: Lock/Unlock posts, Mod Delete for comments. New Admin Panel page at `/admin` with member list and invite code viewer.
+- **Files:**
+  - `supabase/migrations/006_role_system.sql` — NEW
+  - `src/hooks/useAuth.tsx` — Role type, helpers
+  - `src/lib/boardsApi.ts` — `lockPost()`, `softDeletePost()`
+  - `src/components/boards/CommentItem.tsx` — Mod Delete button
+  - `src/pages/PostDetail.tsx` — Lock button, mod toolbar
+  - `src/components/boards/PostCard.tsx` — Lock icon
+  - `src/pages/AdminPanel.tsx` — NEW
+  - `src/App.tsx` — /admin route
+  - `src/global.css` — Moderation, admin, lock styles
+- **Status:** Active
+
+---
+
+### DEC-033: Reddit-style comment soft-delete with inline confirmation
+- **Date:** 22 February 2026
+- **Context:** Users had no way to delete their own comments. For a community forum, users need the ability to remove their own content while preserving thread integrity — exactly how Reddit handles it. Additionally, the comment UI elements (votes, timestamps, action buttons) were too small for comfortable mobile interaction.
+- **Decision:** Implement Reddit-style soft-delete: clicking "Delete" on your own comment shows an inline "Delete? Yes / No" confirmation. On confirmation, the comment's `deleted_at` is set to `now()`, body is cleared to `[deleted]`, and `image_urls` is emptied. The comment row remains in the database so the threaded tree stays intact — deleted comments render as a greyed-out `[deleted]` placeholder with no body, images, or actions, but their children remain visible below. RLS policies updated to allow reading soft-deleted comments (tree integrity) and to allow authors to delete comments at any time (not subject to 15-min edit window). Comment UI elements also enlarged: body text 1rem, meta 0.9375rem, action buttons with hover backgrounds and transitions.
+- **Reasoning:** Soft-delete preserves conversation context — if a parent comment is deleted, the replies below it still make sense in context. This is the Reddit standard and the right UX for threaded discussions. Inline confirmation ("Delete? Yes / No") avoids disruptive modal dialogs while still preventing accidental deletions. Enlarging the comment UI improves mobile usability — tappable action buttons with visual hover/active feedback.
+- **Alternatives considered:** Hard-delete (rejected — breaks thread tree, orphans child comments), modal dialog confirmation (rejected — too heavy for a single comment action), soft-delete with body preserved but hidden (rejected — clearing body server-side is cleaner for privacy).
+- **Impact:** Migration `005_comment_soft_delete_rls.sql` — updates RLS policies on `comments` table. `boardsApi.ts` — added `deleteComment()` function, updated `fetchComments()` to include `deleted_at` in select and remove the `deleted_at IS NULL` filter. `CommentItem.tsx` — rewritten with `isDeleted`/`isOwnComment` logic, inline delete confirmation UI, [deleted] placeholder rendering, larger font sizes and interactive action buttons. `PostDetail.tsx` — added `handleDeleteComment` callback passed to all CommentItem instances. `global.css` — enlarged comment typography, interactive hover styles, delete confirmation styles.
+- **Status:** Active
+
+### DEC-032: Reddit-style threaded comment tree
+- **Date:** 22 February 2026
+- **Context:** Comments were displayed as a flat chronological list with a "↳ Replying to @username" text indicator. This made it difficult to follow conversation threads, especially as discussions grew. The `reply_to_id` FK on the comments table already supported threading — the UI just wasn't using it.
+- **Decision:** Rewrite `CommentItem.tsx` and `PostDetail.tsx` to render comments as a recursive tree. Flat comments from the API are converted client-side via a two-pass O(n) tree-building algorithm. Each reply is indented below its parent with a vertical threading line on the left. Threads are collapsible — root comments use a [−]/[+] toggle, nested comments use a clickable threading line. Visual indentation is capped at 6 levels to prevent overflow on mobile.
+- **Reasoning:** Reddit-style threading is the gold standard for community discussion — it lets users follow branching conversations naturally. Client-side tree building keeps the API simple (flat chronological fetch) while giving the UI full control over presentation. The depth cap prevents deeply nested threads from becoming unreadable on small screens.
+- **Alternatives considered:** Server-side tree building (rejected — adds complexity to the API for no benefit, since the flat list is already fetched in one query), flat list with reply indicators (the previous approach — rejected as insufficient for real discussions), limiting thread depth at the data level (rejected — constraining data is worse than constraining presentation).
+- **Impact:** Rewrote `CommentItem.tsx` (new `CommentNode` interface, recursive rendering, collapsible state). Updated `PostDetail.tsx` (added `buildCommentTree()` function). Replaced comment CSS styles in `global.css` with threading line and indentation styles. No database or API changes needed.
+- **Status:** Active
+
+### DEC-031: Replace display_name with unique @username system
+- **Date:** 21 February 2026
+- **Context:** The platform used `display_name` (free-text, non-unique) for user identification. In the gb/ Boards context, users need a reliable way to identify and reference each other — like @mentions on X or Reddit. Display names don't work for this because they're not unique and not URL-safe.
+- **Decision:** Replace `display_name` entirely with a `username` column: 3-20 characters, alphanumeric + underscores only, case-insensitive uniqueness enforced via `lower()` index. Usernames render as `@username` throughout the app and function as clickable links that open a slide-up profile modal. Existing accounts received placeholder usernames generated from their email prefixes.
+- **Reasoning:** A unique username is the foundation for @mentions, profile linking, and community identity. Case-insensitive uniqueness prevents confusion (e.g., `JohnSmith` vs `johnsmith`). The `@username` convention is universally understood from X/Twitter. Replacing `display_name` rather than adding alongside it avoids confusion about which name to show where.
+- **Alternatives considered:** Adding username alongside display_name (rejected — two name fields causes confusion about which to show), using email as identifier (rejected — privacy concern, not user-friendly), UUID-based profile links without usernames (rejected — no human-readable identity).
+- **Impact:** Migration `004_username_replaces_display_name.sql` — adds `username` column, drops `display_name`, updates `handle_new_user()` trigger. All frontend components updated: boardsApi.ts, PostCard, CommentItem, PostDetail, BoardView, Dashboard, Profile, Register. New `UserProfileModal.tsx` component. Edge Function `register/index.ts` updated. CSS additions for `.username-link` and `.user-profile-*` styles.
+- **Status:** Active
+
+### DEC-030: All boards visible to all verified members for MVP
+- **Date:** 21 February 2026
+- **Context:** gb/ Boards will eventually have regional boards (gb/west-midlands, gb/scotland, etc.) scoped so only members of that region can see them. For MVP with <50 users, this adds friction without value.
+- **Decision:** All boards are visible to all verified members regardless of region. Regional board scoping deferred to Goal 2.
+- **Reasoning:** With a small user base, restricting visibility fragments an already small community. Better to let everyone see everything and build momentum. Scoping can be layered on later via RLS policy updates without schema changes.
+- **Alternatives considered:** Region-scoped from day one (rejected — fragments tiny community), hybrid with national visible + regional scoped (rejected — unnecessary complexity for MVP).
+- **Impact:** RLS policies on `posts` and `comments` use `is_current_user_verified()` only, no scope check. When regional scoping is added, policies get an additional `board.scope_id` check.
+- **Status:** Active
+
+### DEC-029: Hot sort uses last_comment_at for MVP (no decay algorithm)
+- **Date:** 21 February 2026
+- **Context:** Reddit-style "Hot" sorting uses a decay function (Wilson score, Hacker News algorithm) to rank content by a combination of votes, comments, and recency. For MVP with <100 posts, this is over-engineered.
+- **Decision:** Hot sort = `ORDER BY last_comment_at DESC NULLS LAST`, with pinned posts first. Posts with recent comments rise naturally.
+- **Reasoning:** At low volume, activity-based sorting is functionally equivalent to decay-based ranking. Zero computation cost. Upgrade path is clean: add a `hot_score` column maintained by a scheduled Postgres function when post volume warrants it.
+- **Alternatives considered:** Wilson score (rejected — overkill at this scale), Hacker News gravity formula (rejected — same), no Hot sort / just New + Top (rejected — loses the "active discussion" signal).
+- **Impact:** No additional columns or functions needed. Just an `ORDER BY` clause on the existing `last_comment_at` field.
+- **Status:** Active
+
+### DEC-028: Client-side image processing (resize, EXIF strip, compress)
+- **Date:** 21 February 2026
+- **Context:** gb/ Boards allows image uploads on posts and comments. Images need to be reasonably sized (not raw 12MP phone photos) and stripped of EXIF data (which contains GPS coordinates and device info — privacy risk).
+- **Decision:** All image processing happens client-side in the browser before upload. Canvas API resizes to max 1200px on longest side, re-exports as JPEG at 80% quality. Canvas re-export naturally strips EXIF metadata. No server-side image pipeline.
+- **Reasoning:** Browser Canvas API handles resize, compression, and EXIF stripping natively — no external dependencies, no server infrastructure. Keeps images under 5MB. EXIF stripping is a critical privacy feature: users posting from phones would otherwise leak GPS coordinates, device model, and timestamps.
+- **Alternatives considered:** Server-side processing with Sharp/ImageMagick (rejected — requires server infrastructure, adds latency), Supabase Edge Function for processing (rejected — Edge Functions have size limits and no Canvas API), accept raw uploads (rejected — storage cost, bandwidth, EXIF privacy leak).
+- **Impact:** New component `ImageUploader.tsx`. Max upload size 5MB per image. Supabase Storage bucket `board-images`.
+- **Status:** Active
+
+### DEC-027: Flat comments with reply_to hint (not full nesting)
+- **Date:** 21 February 2026
+- **Context:** Comments on posts need some form of threading so users can respond to specific comments, not just the post. Full Reddit-style nested comment trees are complex to render and navigate on mobile.
+- **Decision:** Flat comment list sorted chronologically, with an optional `reply_to_id` field. When set, the comment displays a "↳ Replying to {name}" indicator above it. No indentation, no recursive tree rendering.
+- **Reasoning:** Full nesting creates deep indentation that's unusable on mobile screens. Flat + reply-to gives 80% of the threading value with 20% of the complexity. The data model supports upgrade to full nesting later — `reply_to_id` is already a self-referencing FK. UI just needs a tree renderer.
+- **Alternatives considered:** Full nested threading (rejected — mobile UX nightmare, complex rendering), purely flat with no reply context (rejected — loses conversational flow), collapsible nested threads (rejected — too complex for MVP).
+- **Impact:** `comments` table has `reply_to_id` column (nullable FK to self). `CommentItem.tsx` shows reply-to indicator. No recursive queries needed — single flat query with optional join for reply-to author name.
+- **Status:** Active
+
+### DEC-026: Single upvote/downvote system (not multi-reaction)
+- **Date:** 21 February 2026
+- **Context:** The original database architecture doc specified a `reactions` table with three types: like, support, fire. For gb/ Boards, we need a system that directly feeds the sorting algorithm.
+- **Decision:** Replace multi-reaction with a single upvote/downvote vote per user per target. `votes` table with `value` of +1 or -1. Net `upvote_count` cached on posts and comments via trigger.
+- **Reasoning:** Upvote/downvote is simpler, more familiar (Reddit model), and directly feeds the Top sort algorithm. Multi-reaction (like/support/fire) adds UI complexity and doesn't map cleanly to a single ranking score. One vote per target is enforceable via unique constraint.
+- **Alternatives considered:** Multi-reaction as originally designed (rejected — doesn't feed sorting, adds complexity), upvote only / no downvote (rejected — loses the signal of community disagreement, which is valuable for a political platform), no voting system (rejected — no way to surface quality content).
+- **Impact:** New `votes` table replaces planned `reactions` table. `VoteButton.tsx` component. Trigger maintains `upvote_count` on posts and comments. `database-architecture.md` to be updated to reflect this change.
+- **Status:** Active
+
+### DEC-025: Replace Telegram architecture with in-app gb/ Boards
+- **Date:** 21 February 2026
+- **Context:** Phase 1.6 was originally designed around creating and managing Telegram groups as the community communication layer. This creates a fragmented experience where users bounce between the app and Telegram, and gives Restore Britain no ownership of the discussion data.
+- **Decision:** Replace the entire Telegram group architecture with an in-app forum system branded "gb/ Boards." Community discussion lives entirely within the app. Telegram and X are recommended for private messaging but not integrated. The "Join Telegram Group" button on the region bottom sheet is replaced with a board link.
+- **Reasoning:** Keeping discussion in-app means: owning the data, controlling the experience, enforcing membership gating at the content level (not just the group invite level), and building a distinctive community identity with the `gb/` namespace. Telegram groups are impossible to moderate at scale and fragment the user journey.
+- **Alternatives considered:** Telegram groups as originally planned (rejected — fragmented experience, no data ownership, moderation nightmare), Discord server (rejected — same fragmentation, younger demographic association), Matrix/Element (rejected — technical barrier for non-technical members).
+- **Impact:** Phase 1.6 fully rewritten. New tables: `boards`, `posts`, `comments`, `votes`. New storage bucket. ~12 new frontend components/pages. `RegionBottomSheet` updated to remove Telegram references. DEC-002 ("Delegate all messaging to Telegram") is superseded for community discussion, retained only for private messaging recommendation.
+- **Status:** Active — supersedes DEC-002 for community discussion
+
+### DEC-024: Database trigger for regions.member_count maintenance
+- **Date:** 21 February 2026
+- **Context:** The bottom sheet displays `member_count` for each region. This value needs to stay accurate as users are assigned to regions during onboarding or change regions later.
+- **Decision:** Use a PostgreSQL `BEFORE INSERT OR UPDATE` trigger on the `profiles` table that automatically increments/decrements `regions.member_count` whenever a profile's `region_id` changes. Decrements clamped to 0 to prevent negative counts. SQL saved in `supabase/migrations/002_member_count_trigger.sql`.
+- **Reasoning:** member_count is read on every bottom-sheet open (high read frequency) but only changes when a user onboards or changes region (low write frequency). A pre-computed integer with trigger maintenance is far cheaper than a `COUNT(*)` query on every read. The trigger is `SECURITY DEFINER` with `search_path = public` to avoid RLS interference.
+- **Alternatives considered:** `COUNT(*)` view or RPC (rejected — unnecessary read overhead on every bottom-sheet open), client-side count (rejected — inaccurate, requires loading all profiles), scheduled batch update (rejected — stale data between runs).
+- **Impact:** `supabase/migrations/002_member_count_trigger.sql` — Dennis to run in Supabase SQL Editor. A one-time reconciliation query is included in comments for any existing data.
+- **Status:** Active — pending Dennis running the migration.
+
+### DEC-023: Postcode-to-region onboarding flow with ProtectedRoute gate
+- **Date:** 21 February 2026
+- **Context:** After registration, users need to be assigned to a region. Phase 1.5 requires a mechanism to collect the user's location and map them to one of the 12 regions.
+- **Decision:** Build a standalone onboarding page (`/onboarding`) that collects the user's UK postcode, extracts the 1-2 letter area prefix, maps it to a region via a client-side lookup table (124 mappings), and stores both `postcode_area` and `region_id` on the profile. `ProtectedRoute` redirects users with no `region_id` to this page. Users can skip onboarding and select a region from the map later.
+- **Reasoning:** Postcodes are the simplest location input for UK users — everyone knows theirs. The area prefix (first 1-2 letters) maps cleanly to the 12 regions with no ambiguity for 99%+ of cases. Client-side lookup avoids a network request and works offline. The skip option ensures no user is permanently blocked from accessing the app.
+- **Alternatives considered:** Geolocation API (rejected — requires permission prompt, fails indoors, overkill for 12 regions), dropdown region picker (rejected — less engaging, users may not know their ONS region name), full postcode lookup API (rejected — external dependency, cost, unnecessary precision for regional assignment).
+- **Impact:** New files: `src/pages/Onboarding.tsx`, `src/lib/postcodeRegions.ts`. Modified: `src/components/ProtectedRoute.tsx` (added region_id check), `src/App.tsx` (added /onboarding route).
+- **Status:** Active
+
+### DEC-022: Bottom sheet for region detail view (CSS transform animation)
+- **Date:** 21 February 2026
+- **Context:** Phase 1.5 requires a region detail panel that appears when a user taps a region on the map. The panel needs to show region info, member count, and a Telegram group link.
+- **Decision:** Build a bottom-sheet component (`RegionBottomSheet`) that slides up from the bottom of the viewport using CSS `transform: translateY()` animation. Dismissible via swipe-down gesture (touch event tracking with 80px threshold) or tapping the semi-transparent overlay behind it. Data fetched from Supabase `regions` table by mapping feature IDs to region names.
+- **Reasoning:** Bottom sheets are the standard mobile pattern for contextual detail — familiar to users, doesn't obscure the entire map, allows easy dismissal. CSS transform animation is GPU-accelerated and 60fps. Swipe-to-dismiss is the natural gesture on mobile. Feature ID to region name mapping is done client-side since we have a static list of 12 regions.
+- **Alternatives considered:** Full-page overlay (rejected — hides the map entirely, breaks spatial context), side panel (rejected — too narrow on mobile), modal dialog (rejected — feels desktop-centric, not the right pattern for map interaction).
+- **Impact:** New files: `src/components/map/RegionBottomSheet.tsx`. Modified: `src/pages/MapView.tsx` (manages selectedRegionId state), `src/components/map/RegionMap.tsx` (added onBackgroundClick prop), `src/global.css` (bottom sheet styles).
+- **Status:** Active
+
 ### DEC-021: Placeholder logo and navy primary colour
 - **Date:** 20 February 2026
 - **Context:** Official brand assets have not yet been received from Restore Britain. Dennis created a placeholder logo — a white UK silhouette on a navy blue background — to use in the interim.
@@ -229,6 +358,6 @@ Each entry follows this structure:
 
 ---
 
-*Document version: 0.4 — Added DEC-019 (fill-antialias fix), DEC-020 (Shetland/Orkney removal), DEC-021 (placeholder logo and navy colour)*
+*Document version: 0.5 — Added DEC-022 (bottom sheet), DEC-023 (postcode onboarding), DEC-024 (member_count trigger)*
 *Last updated: February 2026*
 *Author: Dennis Stevens & Claude (AI-assisted)*

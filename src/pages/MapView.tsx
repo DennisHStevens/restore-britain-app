@@ -1,18 +1,37 @@
 /**
  * MapView — the map tab page.
  *
- * Wraps RegionMap and handles the onRegionSelect callback.
- * For now, selection is logged to the console. Phase 1.5 will
- * open a bottom sheet with region details and Telegram link here.
+ * Wraps RegionMap and the RegionBottomSheet. Tapping a region on the
+ * map opens the bottom sheet with that region's details (name, member
+ * count, Telegram link). Tapping the map background or swiping the
+ * sheet down dismisses it.
  */
 
+import { useState, useCallback } from 'react';
 import { RegionMap } from '../components/map/RegionMap';
+import { RegionBottomSheet } from '../components/map/RegionBottomSheet';
 
 export function MapView() {
-  const handleRegionSelect = (regionId: string, regionName: string) => {
-    /* Phase 1.5 will open the bottom sheet here */
-    console.log(`Selected: ${regionName} (${regionId})`);
-  };
+  const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
 
-  return <RegionMap onRegionSelect={handleRegionSelect} />;
+  const handleRegionSelect = useCallback((regionId: string, _regionName: string) => {
+    setSelectedRegionId(regionId);
+  }, []);
+
+  const handleDismiss = useCallback(() => {
+    setSelectedRegionId(null);
+  }, []);
+
+  return (
+    <>
+      <RegionMap
+        onRegionSelect={handleRegionSelect}
+        onBackgroundClick={handleDismiss}
+      />
+      <RegionBottomSheet
+        regionFeatureId={selectedRegionId}
+        onDismiss={handleDismiss}
+      />
+    </>
+  );
 }

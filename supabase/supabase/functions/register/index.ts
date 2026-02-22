@@ -1,10 +1,10 @@
 // Atomic registration Edge Function — see DEC-014
 //
-// Receives: invite_code, email, password, display_name, x_handle
+// Receives: invite_code, email, password, username, x_handle
 // Performs all steps atomically with the service_role key:
 //   1. Validate invite code (exists, not expired, not used up)
 //   2. Create user via Supabase Admin Auth API
-//   3. Update the auto-created profile row (display_name, x_handle, is_verified)
+//   3. Update the auto-created profile row (username, x_handle, is_verified)
 //   4. Increment times_used on the invite code
 //
 // If any step fails, cleans up and returns a generic error.
@@ -26,7 +26,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { invite_code, email, password, display_name, x_handle } =
+    const { invite_code, email, password, username, x_handle } =
       await req.json();
 
     // --- Input validation ---
@@ -42,8 +42,12 @@ serve(async (req: Request) => {
         400
       );
     }
-    if (!display_name || typeof display_name !== "string") {
-      return jsonResponse({ error: "Display name is required." }, 400);
+    if (!username || typeof username !== "string") {
+      return jsonResponse({ error: "Username is required." }, 400);
+    }
+    // Validate username format: 3-20 chars, alphanumeric + underscores
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(username.trim())) {
+      return jsonResponse({ error: "Username must be 3-20 characters, letters, numbers, and underscores only." }, 400);
     }
 
     // --- Create service-role Supabase client ---
@@ -110,7 +114,7 @@ serve(async (req: Request) => {
     const { error: profileError } = await supabase
       .from("profiles")
       .update({
-        display_name: display_name.trim(),
+        username: username.trim(),
         x_handle: x_handle?.trim() || null,
         is_verified: true,
         invite_code_used: invite_code.trim(),

@@ -1,39 +1,67 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
+import { getRegionFromPostcode } from '../lib/postcodeRegions';
 
 /**
  * Profile page — shows the user's profile info with edit capability.
  *
- * Displays: display name, email (read-only), X handle, verified status,
- * join date. User can edit display_name and x_handle inline.
+ * Displays: username (editable), email (read-only), X handle, postcode
+ * (editable — changing it recalculates the region), verified status,
+ * join date. User can edit username, x_handle, and postcode inline.
  *
- * Also contains the logout button — this is the natural place for it
- * now that we have a proper nav structure.
+ * Also contains the logout button.
  */
 export function Profile() {
   const { profile, loading, refreshProfile } = useAuth();
   const navigate = useNavigate();
 
   const [editing, setEditing] = useState(false);
-  const [displayName, setDisplayName] = useState('');
+  const [username, setUsername] = useState('');
   const [xHandle, setXHandle] = useState('');
+  const [editPostcode, setEditPostcode] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [regionName, setRegionName] = useState<string | null>(null);
+
+  /** Username validation: 3-20 chars, alphanumeric + underscores */
+  const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+
+  /* Fetch the region name when profile loads or changes */
+  useEffect(() => {
+    if (!profile?.region_id) {
+      setRegionName(null);
+      return;
+    }
+
+    supabase
+      .from('regions')
+      .select('name')
+      .eq('id', profile.region_id)
+      .single()
+      .then(({ data }) => {
+        setRegionName(data?.name ?? null);
+      });
+  }, [profile?.region_id]);
 
   function startEditing() {
-    setDisplayName(profile?.display_name || '');
+    setUsername(profile?.username || '');
     setXHandle(profile?.x_handle || '');
+    setEditPostcode(profile?.postcode_area || '');
     setSaveError('');
     setSaveSuccess(false);
     setEditing(true);
   }
 
   async function handleSave() {
-    if (!displayName.trim()) {
-      setSaveError('Display name cannot be empty.');
+    if (!username.trim()) {
+      setSaveError('Username cannot be empty.');
+      return;
+    }
+    if (!usernameRegex.test(username.trim())) {
+      setSaveError('Username must be 3-20 characters, letters, numbers, and underscores only.');
       return;
     }
 
@@ -41,24 +69,63 @@ export function Profile() {
     setSaveError('');
     setSaveSuccess(false);
 
+    /* Build the update payload */
+    const updatePayload: Record<string, unknown> = {
+      username: username.trim(),
+      x_handle: xHandle.trim() || null,
+      updated_at: new Date().toISOString(),
+    };
+
+    /*
+     * If the user changed their postcode, recalculate the region.
+     */
+    const trimmedPostcode = editPostcode.trim().toUpperCase();
+    const currentPostcode = (profile?.postcode_area || '').toUpperCase();
+    const postcodeChanged = trimmedPostcode !== currentPostcode;
+
+    if (postcodeChanged && trimmedPostcode) {
+      const newRegionName = getRegionFromPostcode(trimmedPostcode);
+      if (!newRegionName) {
+        setSaveError('Could not determine a region from that postcode.');
+        setSaving(false);
+        return;
+      }
+
+      const { data: regionData, error: regionError } = await supabase
+        .from('regions')
+        .select('id')
+        .eq('name', newRegionName)
+        .single();
+
+      if (regionError || !regionData) {
+        setSaveError('Could not find that region. Please try again.');
+        setSaving(false);
+        return;
+      }
+
+      const postcodeArea = trimmedPostcode.match(/^[A-Z]{1,2}/)?.[0] || '';
+      updatePayload.postcode_area = postcodeArea;
+      updatePayload.region_id = regionData.id;
+    }
+
     const { error } = await supabase
       .from('profiles')
-      .update({
-        display_name: displayName.trim(),
-        x_handle: xHandle.trim() || null,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq('id', profile?.id);
 
     setSaving(false);
 
     if (error) {
-      setSaveError('Failed to save. Please try again.');
+      // Check if it's a unique constraint violation on username
+      if (error.code === '23505' && error.message?.includes('username')) {
+        setSaveError('That username is already taken.');
+      } else {
+        setSaveError('Failed to save. Please try again.');
+      }
       console.error('[Profile] Save error:', error);
     } else {
       setSaveSuccess(true);
       setEditing(false);
-      // Refresh the profile data in the auth hook so the UI updates
       refreshProfile();
     }
   }
@@ -91,19 +158,33 @@ export function Profile() {
         )}
 
         <div style={styles.profileSection}>
-          {/* Display Name — editable */}
+          {/* Username — editable */}
           <div style={styles.field}>
-            <span style={styles.fieldLabel}>Display Name</span>
+            <span style={styles.fieldLabel}>Username</span>
             {editing ? (
-              <input
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                style={styles.input}
-                autoFocus
-              />
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.15rem' }}>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  style={styles.input}
+                  autoFocus
+                />
+                {username.trim() && (
+                  <span style={{
+                    fontSize: '0.7rem',
+                    color: usernameRegex.test(username.trim())
+                      ? 'var(--colour-text-muted)'
+                      : 'var(--colour-error)',
+                  }}>
+                    @{username.trim()}
+                  </span>
+                )}
+              </div>
             ) : (
-              <span>{profile?.display_name}</span>
+              <span style={{ color: 'var(--colour-primary)', fontWeight: 600 }}>
+                @{profile?.username}
+              </span>
             )}
           </div>
 
@@ -136,6 +217,32 @@ export function Profile() {
             ) : (
               <span style={{ color: 'var(--colour-text-muted)', fontStyle: 'italic', fontSize: '0.875rem' }}>Not set</span>
             )}
+          </div>
+
+          {/* Postcode — editable */}
+          <div style={styles.field}>
+            <span style={styles.fieldLabel}>Postcode</span>
+            {editing ? (
+              <input
+                type="text"
+                value={editPostcode}
+                onChange={(e) => setEditPostcode(e.target.value)}
+                placeholder="e.g. BS1 4DJ"
+                style={{ ...styles.input, textTransform: 'uppercase' as never }}
+              />
+            ) : (
+              <span style={{ fontSize: '0.875rem' }}>
+                {profile?.postcode_area || <span style={{ color: 'var(--colour-text-muted)', fontStyle: 'italic' }}>Not set</span>}
+              </span>
+            )}
+          </div>
+
+          {/* Region — derived from postcode, read-only */}
+          <div style={styles.field}>
+            <span style={styles.fieldLabel}>Region</span>
+            <span style={{ fontSize: '0.875rem', color: 'var(--colour-text-muted)' }}>
+              {regionName ?? 'Not assigned'}
+            </span>
           </div>
 
           {/* Verified — read-only */}

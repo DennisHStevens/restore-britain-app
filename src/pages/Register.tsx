@@ -3,19 +3,25 @@ import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 /**
- * Registration page — collects invite code, email, password, display name,
+ * Registration page — collects invite code, email, password, username,
  * and optional X handle. Sends everything to the atomic `register` Edge
  * Function in a single request (see DEC-014).
+ *
+ * Username rules: 3-20 characters, alphanumeric + underscores only.
+ * Uniqueness is case-insensitive (enforced by DB index).
  */
 export function Register() {
   const navigate = useNavigate();
   const [inviteCode, setInviteCode] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
+  const [username, setUsername] = useState('');
   const [xHandle, setXHandle] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  /** Username validation: 3-20 chars, alphanumeric + underscores */
+  const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -34,8 +40,12 @@ export function Register() {
       setError('Password must be at least 12 characters.');
       return;
     }
-    if (!displayName.trim()) {
-      setError('Display name is required.');
+    if (!username.trim()) {
+      setError('Username is required.');
+      return;
+    }
+    if (!usernameRegex.test(username.trim())) {
+      setError('Username must be 3-20 characters, letters, numbers, and underscores only.');
       return;
     }
 
@@ -50,7 +60,7 @@ export function Register() {
             invite_code: inviteCode.trim(),
             email: email.trim().toLowerCase(),
             password,
-            display_name: displayName.trim(),
+            username: username.trim(),
             x_handle: xHandle.trim() || null,
           },
         }
@@ -142,16 +152,26 @@ export function Register() {
           </label>
 
           <label style={styles.label}>
-            Display Name *
+            Username *
             <input
               type="text"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="How you'll appear to other members"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="3-20 chars, letters, numbers, underscores"
               style={styles.input}
-              autoComplete="name"
+              autoComplete="username"
               disabled={submitting}
             />
+            {username.trim() && (
+              <span style={{
+                fontSize: '0.75rem',
+                color: usernameRegex.test(username.trim())
+                  ? 'var(--colour-text-muted)'
+                  : 'var(--colour-error)',
+              }}>
+                @{username.trim()}
+              </span>
+            )}
           </label>
 
           <label style={styles.label}>

@@ -207,6 +207,29 @@ Junction table linking users to departments. Users can be in multiple department
 
 **Unique constraint:** `(user_id, department_id)`
 
+#### Roles — Simplified Implementation (DEC-034)
+
+> **Note:** The original design below proposed 6 roles with separate `roles` and `user_roles` tables. After evaluation (DEC-034, 22 Feb 2026), this was simplified to a single `role` text column on the `profiles` table with a 4-tier hierarchy. The separate tables below are **not implemented** — they remain here for reference if future complexity requires them.
+
+**Current implementation (migration 006):**
+
+The `profiles` table has a `role` column:
+
+| Value | Level | Powers |
+|---|---|---|
+| `member` | 1 | Default. Standard verified member. |
+| `commander` | 2 | Moderate posts/comments in their region's board (via `region_id` matching `boards.scope_id`). |
+| `admin` | 3 | Moderate all boards globally. Read invite codes. |
+| `super_admin` | 4 | All admin powers. Can change user roles. Cannot be demoted. |
+
+Helper functions: `role_level()`, `get_current_user_role()`, `is_current_user_at_least()`, `get_current_user_region_id()`.
+Trigger: `protect_role_column` prevents non-super_admins from changing roles and prevents demoting super_admins.
+
+---
+
+<details>
+<summary>Original design (not implemented — kept for reference)</summary>
+
 #### `roles`
 Defines the available roles in the system. Roles are hierarchical.
 
@@ -241,12 +264,7 @@ Junction table assigning roles to users within a specific scope (region, departm
 | `granted_at` | `timestamptz` | DEFAULT now() | |
 | `revoked_at` | `timestamptz` | nullable | Soft revocation |
 
-**Example rows:**
-- User A is a regional leader for West Midlands: `scope_type = 'region'`, `scope_id = [west_midlands_id]`, `role_id = [regional_leader_id]`
-- User B is a national admin: `scope_type = 'national'`, `scope_id = NULL`, `role_id = [national_admin_id]`
-- User C is the department lead for Online Operations: `scope_type = 'department'`, `scope_id = [online_ops_id]`, `role_id = [department_lead_id]`
-
-This structure means the same user can hold different roles in different scopes — e.g., a regional leader for the North West who is also a member of the Online Operations department.
+</details>
 
 ---
 

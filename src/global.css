@@ -36,14 +36,24 @@
  */
 html {
   height: 100%;
-  background-color: var(--colour-surface);
+  background-color: var(--colour-primary);
 }
 
 body {
   height: 100%;
+  /*
+   * -webkit-fill-available is the only unit iOS Safari respects for
+   * "the actual visible area" — 100vh is notoriously broken on iOS
+   * (it includes the area behind the Safari toolbar). 100dvh is the
+   * modern fix but older iOS versions don't support it. We cascade:
+   * 100% → -webkit-fill-available → 100dvh (last supported wins).
+   */
+  min-height: 100%;
+  min-height: -webkit-fill-available;
+  min-height: 100dvh;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     'Helvetica Neue', Arial, sans-serif;
-  background-color: var(--colour-surface);
+  background-color: var(--colour-primary);
   color: var(--colour-text);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -53,6 +63,9 @@ body {
 
 #root {
   height: 100%;
+  min-height: 100%;
+  min-height: -webkit-fill-available;
+  min-height: 100dvh;
 }
 
 a {
@@ -74,13 +87,21 @@ a:hover {
  * ─────────────────────────────────────────────────────────────── */
 
 .app-shell {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  /*
+   * Switched from position:fixed to a flow-based layout that fills
+   * the parent (#root → body → html). position:fixed has known
+   * issues on iOS Safari where bottom:0 doesn't always reach the
+   * physical bottom of the screen, leaving a visible gap.
+   *
+   * overflow:hidden on body still prevents rubber-band scrolling.
+   * Only .app-content scrolls internally.
+   */
   display: flex;
   flex-direction: column;
+  height: 100%;
+  min-height: 100%;
+  min-height: -webkit-fill-available;
+  min-height: 100dvh;
   background-color: var(--colour-surface);
 }
 
@@ -120,6 +141,32 @@ a:hover {
   letter-spacing: -0.01em;
 }
 
+/* Profile button sits at the far right of the header bar */
+.app-header-profile {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.app-header-profile:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.app-header-profile.active {
+  background: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+}
+
 .app-content {
   flex: 1;
   overflow-y: auto;
@@ -139,10 +186,14 @@ a:hover {
   align-items: stretch;
   justify-content: space-around;
   /*
-   * No bottom padding needed — the shell is position:fixed with
-   * bottom:0, so its white background naturally fills behind the
-   * iOS home indicator. The indicator just overlays on top.
+   * On iOS with viewport-fit=cover the app extends to the physical
+   * screen edge. The nav needs padding at the bottom so its white
+   * background fills the safe area zone (home indicator area) while
+   * the interactive buttons sit above it. This is the standard iOS
+   * tab-bar pattern — background extends, content doesn't.
    */
+  padding-top: 0.35rem;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .app-nav-button {
@@ -150,9 +201,9 @@ a:hover {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.2rem;
+  gap: 0.15rem;
   flex: 1;
-  height: 60px;
+  height: 48px;
   background: none;
   border: none;
   cursor: pointer;
@@ -187,23 +238,6 @@ a:hover {
   height: 100%;
 }
 
-/* Floating region name label — positioned via inline style at the
- * centroid's screen coordinates. Transform centres it on the point. */
-.region-label {
-  position: absolute;
-  z-index: 10;
-  transform: translate(-50%, -50%);
-  background-color: var(--colour-surface);
-  color: var(--colour-text);
-  padding: 0.375rem 0.75rem;
-  border-radius: var(--radius);
-  font-size: 0.875rem;
-  font-weight: 600;
-  white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  pointer-events: none;
-}
-
 /* Minimal attribution for ONS boundary data */
 .map-attribution {
   position: absolute;
@@ -213,4 +247,1671 @@ a:hover {
   font-size: 0.625rem;
   color: rgba(0, 0, 0, 0.4);
   pointer-events: none;
+}
+
+/* ─── Bottom Sheet ──────────────────────────────────────────────
+ * Slides up from the bottom when a region is tapped on the map.
+ * Uses CSS transforms for smooth 60fps animation. The overlay
+ * catches taps above the sheet to dismiss it.
+ * ─────────────────────────────────────────────────────────────── */
+
+/*
+ * The overlay covers the full map area above the sheet.
+ * When open it dims and blurs the map so the sheet content
+ * feels like the primary focus. Tapping it dismisses the sheet.
+ */
+.bottom-sheet-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  background-color: rgba(0, 0, 0, 0);
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+  /*
+   * Overlay fades in/out in sync with the sheet. Uses the same
+   * iOS-style timing curve so blur + dim feel connected to the slide.
+   */
+  transition:
+    background-color 0.4s cubic-bezier(0.32, 0.72, 0, 1),
+    backdrop-filter 0.4s cubic-bezier(0.32, 0.72, 0, 1),
+    -webkit-backdrop-filter 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.bottom-sheet-overlay.open {
+  pointer-events: auto;
+  background-color: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.bottom-sheet {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 21;
+  background-color: var(--colour-surface);
+  border-radius: 1rem 1rem 0 0;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+  transform: translateY(100%);
+  /*
+   * iOS-style damped spring curve. cubic-bezier(0.32, 0.72, 0, 1) is
+   * Apple's standard sheet presentation timing — fast initial movement
+   * that decelerates smoothly, like a spring settling into place.
+   * 0.44s matches Apple's UIKit modal presentation duration.
+   */
+  transition: transform 0.44s cubic-bezier(0.32, 0.72, 0, 1);
+  /* 60% of viewport — enough to show detail without hiding the map entirely */
+  max-height: 60vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.bottom-sheet.open {
+  transform: translateY(0);
+}
+
+/* Drag handle — the small bar at the top that signals "pull me" */
+.bottom-sheet-handle {
+  display: flex;
+  justify-content: center;
+  padding: 0.75rem 0 0.25rem;
+  cursor: grab;
+}
+
+.bottom-sheet-handle-bar {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background-color: var(--colour-border);
+}
+
+.bottom-sheet-content {
+  padding: 0.5rem 1.25rem 1.5rem;
+}
+
+.bottom-sheet-loading {
+  color: var(--colour-text-muted);
+  font-size: 0.875rem;
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.bottom-sheet-error {
+  color: var(--colour-error);
+  font-size: 0.875rem;
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.bottom-sheet-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--colour-text);
+  margin-bottom: 0.5rem;
+}
+
+.bottom-sheet-description {
+  font-size: 0.875rem;
+  color: var(--colour-text-muted);
+  line-height: 1.5;
+  margin-bottom: 1rem;
+}
+
+.bottom-sheet-stats {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 1.25rem;
+}
+
+.bottom-sheet-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.bottom-sheet-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--colour-text);
+}
+
+.bottom-sheet-stat-label {
+  font-size: 0.75rem;
+  color: var(--colour-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.bottom-sheet-board-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.875rem;
+  background-color: var(--colour-primary);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.bottom-sheet-board-btn:active {
+  background-color: var(--colour-primary-hover);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+ * gb/ Boards — Community Forum Styles
+ * ═══════════════════════════════════════════════════════════════ */
+
+/* ─── Board List Page ──────────────────────────────────────── */
+
+.boards-page {
+  padding: 1rem;
+  max-width: var(--max-width);
+  margin: 0 auto;
+}
+
+.boards-page-header {
+  margin-bottom: 1.25rem;
+}
+
+.boards-page-title {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--colour-text);
+}
+
+.boards-page-subtitle {
+  font-size: 0.875rem;
+  color: var(--colour-text-muted);
+  margin-top: 0.25rem;
+}
+
+.boards-loading,
+.boards-error,
+.boards-empty {
+  text-align: center;
+  padding: 2rem 0;
+  color: var(--colour-text-muted);
+  font-size: 0.875rem;
+}
+
+.boards-error {
+  color: var(--colour-error);
+}
+
+.board-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--colour-surface);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.board-card:active {
+  border-color: var(--colour-primary);
+}
+
+.board-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.375rem;
+}
+
+.board-card-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--colour-primary);
+}
+
+.board-card-post-count {
+  font-size: 0.75rem;
+  color: var(--colour-text-muted);
+}
+
+.board-card-description {
+  font-size: 0.8125rem;
+  color: var(--colour-text-muted);
+  line-height: 1.4;
+  margin-bottom: 0.5rem;
+}
+
+.board-card-footer {
+  font-size: 0.75rem;
+}
+
+/* ─── Board View Page ──────────────────────────────────────── */
+
+.board-view {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  /* Extra bottom padding to account for the FAB */
+  padding-bottom: 5rem;
+}
+
+.board-view-header {
+  padding: 1rem 1rem 0.5rem;
+}
+
+.board-view-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--colour-primary);
+}
+
+.board-view-description {
+  font-size: 0.8125rem;
+  color: var(--colour-text-muted);
+  margin-top: 0.25rem;
+}
+
+.board-view-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: var(--colour-bg);
+}
+
+.board-view-refresh {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--colour-text-muted);
+  padding: 0.375rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+}
+
+.board-view-refresh:active {
+  color: var(--colour-primary);
+}
+
+.board-view-loading {
+  padding: 0 1rem;
+}
+
+.board-view-error {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--colour-error);
+  font-size: 0.875rem;
+}
+
+.board-view-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.board-view-empty-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--colour-text);
+  margin-bottom: 0.375rem;
+}
+
+.board-view-empty-subtitle {
+  font-size: 0.8125rem;
+  color: var(--colour-text-muted);
+}
+
+.board-view-load-more {
+  display: block;
+  width: calc(100% - 2rem);
+  margin: 0.75rem 1rem;
+  padding: 0.75rem;
+  background: var(--colour-surface);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius);
+  color: var(--colour-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+}
+
+.board-view-load-more:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Floating Action Button — compose new post */
+.board-view-fab {
+  position: fixed;
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 1rem);
+  right: 1rem;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: var(--colour-primary);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.board-view-fab:active {
+  background-color: var(--colour-primary-hover);
+  transform: scale(0.95);
+}
+
+/* ─── Sort Tabs ────────────────────────────────────────────── */
+
+.sort-tabs {
+  display: flex;
+  gap: 0.375rem;
+}
+
+.sort-tab {
+  padding: 0.375rem 0.875rem;
+  border-radius: 999px;
+  border: 1px solid var(--colour-border);
+  background: var(--colour-surface);
+  color: var(--colour-text-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sort-tab-active {
+  background-color: var(--colour-primary);
+  color: #ffffff;
+  border-color: var(--colour-primary);
+}
+
+/* ─── Post Card ────────────────────────────────────────────── */
+
+.post-card {
+  display: block;
+  background: var(--colour-surface);
+  border-bottom: 1px solid var(--colour-border);
+  padding: 0.875rem 1rem;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.post-card:active {
+  background-color: #f9fafb;
+}
+
+.post-card-pinned {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--colour-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.375rem;
+}
+
+.post-card-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--colour-text);
+  line-height: 1.3;
+  margin-bottom: 0.375rem;
+}
+
+.post-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  margin-bottom: 0.375rem;
+}
+
+.post-card-author {
+  font-weight: 600;
+  color: var(--colour-text);
+}
+
+.post-card-dot {
+  color: var(--colour-text-muted);
+}
+
+.post-card-body {
+  font-size: 0.8125rem;
+  color: var(--colour-text-muted);
+  line-height: 1.4;
+  margin-bottom: 0.5rem;
+  /* Truncate to 2 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.post-card-image {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+  max-height: 200px;
+}
+
+.post-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.post-card-image-count {
+  position: absolute;
+  bottom: 0.375rem;
+  right: 0.375rem;
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+}
+
+.post-card-stats {
+  display: flex;
+  gap: 1rem;
+}
+
+.post-card-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.9375rem;
+  color: var(--colour-text-muted);
+}
+
+/* ─── Vote Button ──────────────────────────────────────────── */
+
+.vote-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.vote-arrow {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease;
+  color: var(--colour-text-muted);
+  transition: color 0.1s ease, background-color 0.1s ease;
+}
+
+.vote-arrow:active {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.vote-arrow:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.vote-active-up {
+  color: var(--colour-primary);
+}
+
+.vote-active-down {
+  color: var(--colour-error);
+}
+
+.vote-count {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--colour-text-muted);
+  min-width: 1.5rem;
+  text-align: center;
+}
+
+.vote-count-up {
+  color: var(--colour-primary);
+}
+
+.vote-count-down {
+  color: var(--colour-error);
+}
+
+/* ─── New Post Page ────────────────────────────────────────── */
+
+.new-post-page {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 1rem 2rem;
+}
+
+.new-post-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--colour-border);
+  margin-bottom: 1rem;
+}
+
+.new-post-cancel {
+  background: none;
+  border: none;
+  color: var(--colour-text-muted);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.new-post-board-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--colour-primary);
+}
+
+.new-post-submit {
+  background: var(--colour-primary);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.new-post-submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.new-post-error {
+  background: var(--colour-error-bg);
+  color: var(--colour-error);
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--radius);
+  font-size: 0.8125rem;
+  margin-bottom: 0.75rem;
+}
+
+.new-post-field {
+  position: relative;
+  margin-bottom: 0.75rem;
+}
+
+.new-post-title-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--colour-text);
+  background: var(--colour-input-bg);
+}
+
+.new-post-title-input:focus {
+  outline: none;
+  border-color: var(--colour-primary);
+}
+
+.new-post-char-count {
+  position: absolute;
+  right: 0.75rem;
+  bottom: -1.25rem;
+  font-size: 0.6875rem;
+  color: var(--colour-text-muted);
+}
+
+.new-post-body-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius);
+  font-size: 0.9375rem;
+  color: var(--colour-text);
+  background: var(--colour-input-bg);
+  resize: none;
+  font-family: inherit;
+  line-height: 1.5;
+  min-height: 120px;
+  margin-top: 0.5rem;
+}
+
+.new-post-body-input:focus {
+  outline: none;
+  border-color: var(--colour-primary);
+}
+
+.new-post-images {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+  flex-wrap: wrap;
+}
+
+.new-post-image-thumb {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.new-post-image-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.new-post-image-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  border: none;
+  font-size: 0.875rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─── Image Uploader ───────────────────────────────────────── */
+
+.image-uploader {
+  display: inline-block;
+}
+
+.image-uploader-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--colour-surface);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius);
+  color: var(--colour-text-muted);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.image-uploader-btn:active {
+  border-color: var(--colour-primary);
+}
+
+.image-uploader-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.image-uploader-error {
+  font-size: 0.75rem;
+  color: var(--colour-error);
+  margin-top: 0.25rem;
+}
+
+/* ─── Image Carousel ───────────────────────────────────────── */
+
+.image-carousel-single {
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin: 0.5rem 0;
+}
+
+.image-carousel-single .image-carousel-img {
+  width: 100%;
+  display: block;
+  border-radius: var(--radius);
+}
+
+.image-carousel {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  margin: 0.5rem 0;
+}
+
+.image-carousel-track {
+  display: flex;
+  transition: transform 0.3s ease;
+}
+
+.image-carousel-track .image-carousel-img {
+  min-width: 100%;
+  width: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.image-carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0;
+}
+
+.image-carousel-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--colour-border);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: background-color 0.15s ease;
+}
+
+.image-carousel-dot.active {
+  background: var(--colour-primary);
+}
+
+/* ─── Post Detail Page ─────────────────────────────────────── */
+
+.post-detail-page {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  /* Extra bottom padding for the sticky comment composer */
+  padding-bottom: 6rem;
+}
+
+.post-detail-loading {
+  padding: 1rem;
+}
+
+.post-detail-error {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--colour-error);
+  font-size: 0.875rem;
+}
+
+.post-detail-back-btn {
+  display: inline-block;
+  background: none;
+  border: none;
+  color: var(--colour-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.75rem 1rem;
+}
+
+.post-detail-content {
+  padding: 0 1rem;
+  margin-bottom: 1rem;
+}
+
+.post-detail-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--colour-text);
+  line-height: 1.3;
+  margin-bottom: 0.5rem;
+}
+
+.post-detail-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  margin-bottom: 0.75rem;
+}
+
+.post-detail-author {
+  font-weight: 600;
+  color: var(--colour-text);
+}
+
+.post-detail-dot {
+  color: var(--colour-text-muted);
+}
+
+.post-detail-body {
+  font-size: 0.9375rem;
+  color: var(--colour-text);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.post-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--colour-border);
+  margin-top: 0.75rem;
+}
+
+.post-detail-comment-count {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  color: var(--colour-text-muted);
+}
+
+/* ─── Moderation toolbar (DEC-034) ─────────────────────────── */
+
+.post-mod-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  margin-top: 0.25rem;
+  border-top: 1px solid var(--colour-border);
+}
+
+.post-mod-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--colour-text-muted);
+  background: var(--colour-surface);
+  border: 1px solid var(--colour-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.post-mod-btn:hover {
+  color: var(--colour-text);
+  background: var(--colour-bg);
+  border-color: var(--colour-text-muted);
+}
+
+.post-mod-btn-active {
+  color: #f59e0b;
+  border-color: #f59e0b;
+}
+
+.post-mod-btn-active:hover {
+  color: #d97706;
+  border-color: #d97706;
+}
+
+.post-mod-btn-danger:hover {
+  color: #ef4444;
+  border-color: #ef4444;
+}
+
+/* Lock icon next to post titles */
+.post-lock-icon {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 0.375rem;
+  color: #f59e0b;
+  flex-shrink: 0;
+}
+
+/* Locked post notice — shown below comments when post is locked */
+.post-locked-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin: 0 1rem 5rem;
+  font-size: 0.8125rem;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 8px;
+}
+
+/* Role badge — small label next to @usernames */
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.0625rem 0.375rem;
+  margin-left: 0.25rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 3px;
+  vertical-align: middle;
+}
+
+.role-badge-commander {
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.role-badge-admin {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+}
+
+/* ─── Admin Panel (DEC-034) ────────────────────────────────── */
+
+.admin-panel {
+  padding: 1rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.admin-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.admin-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--colour-border);
+  margin-bottom: 1rem;
+}
+
+.admin-tab {
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--colour-text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.admin-tab:hover {
+  color: var(--colour-text);
+}
+
+.admin-tab-active {
+  color: var(--colour-primary);
+  border-bottom-color: var(--colour-primary);
+}
+
+.admin-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.admin-table th {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  font-weight: 600;
+  color: var(--colour-text-muted);
+  border-bottom: 1px solid var(--colour-border);
+  white-space: nowrap;
+}
+
+.admin-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--colour-border);
+  vertical-align: middle;
+}
+
+.admin-cell-username {
+  font-weight: 600;
+  color: var(--colour-primary);
+}
+
+.admin-cell-date {
+  color: var(--colour-text-muted);
+  white-space: nowrap;
+  font-size: 0.75rem;
+}
+
+.admin-cell-code {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.admin-role-tag {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 4px;
+}
+
+.admin-role-member {
+  color: var(--colour-text-muted);
+  background: var(--colour-surface);
+}
+
+.admin-role-commander {
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.admin-role-admin {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.admin-role-super_admin {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.admin-role-select {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  border: 1px solid var(--colour-border);
+  border-radius: 4px;
+  background: var(--colour-surface);
+  color: var(--colour-text);
+  cursor: pointer;
+}
+
+.admin-permanent-label {
+  font-size: 0.6875rem;
+  color: var(--colour-text-muted);
+  font-style: italic;
+}
+
+.admin-code-used {
+  color: var(--colour-text-muted);
+  font-size: 0.75rem;
+}
+
+.admin-code-available {
+  color: #22c55e;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.admin-no-access {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--colour-text-muted);
+}
+
+.admin-back-btn {
+  display: block;
+  margin: 0 auto;
+  padding: 0.5rem 1rem;
+  background: none;
+  border: 1px solid var(--colour-border);
+  border-radius: 6px;
+  color: var(--colour-text);
+  cursor: pointer;
+}
+
+.admin-loading {
+  text-align: center;
+  padding: 2rem;
+  color: var(--colour-text-muted);
+}
+
+.admin-error {
+  text-align: center;
+  padding: 2rem;
+  color: #ef4444;
+}
+
+/* ─── Comments ─────────────────────────────────────────────── */
+
+.post-detail-comments {
+  border-top: 1px solid var(--colour-border);
+}
+
+.post-detail-no-comments {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  font-size: 0.8125rem;
+  color: var(--colour-text-muted);
+}
+
+/* ─── Reddit-style Threaded Comments ──────────────────────── */
+
+/* Each comment + its children form a "thread" block.
+   Nested threads are indented via inline marginLeft. */
+.comment-thread {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+
+/* Vertical threading line — the clickable bar on the left that
+   connects a parent comment to its children. Hovering highlights
+   it; clicking collapses the branch. */
+.comment-thread-line {
+  position: relative;
+  width: 20px;
+  min-width: 20px;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.comment-thread-line::after {
+  content: '';
+  display: block;
+  width: 2px;
+  height: 100%;
+  background-color: var(--colour-border);
+  border-radius: 1px;
+  transition: background-color 0.15s ease;
+}
+
+.comment-thread-line:hover::after {
+  background-color: var(--colour-primary);
+  width: 3px;
+}
+
+/* The content area to the right of the threading line */
+.comment-thread-content {
+  flex: 1;
+  min-width: 0; /* prevent flex overflow */
+  padding: 0.625rem 0;
+}
+
+/* Root-level comments get a bottom border separator */
+.post-detail-comments > .comment-thread {
+  border-bottom: 1px solid var(--colour-border);
+}
+
+.post-detail-comments > .comment-thread:last-child {
+  border-bottom: none;
+}
+
+/* Collapse toggle button for root-level comments: [−] / [+] */
+.comment-collapse-btn {
+  background: none;
+  border: none;
+  color: var(--colour-text-muted);
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0.125rem 0.25rem;
+  margin-right: 0.25rem;
+  font-family: monospace;
+  line-height: 1;
+  border-radius: 3px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.comment-collapse-btn:hover {
+  color: var(--colour-primary);
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Hint text shown when a comment thread is collapsed */
+.comment-collapsed-hint {
+  font-size: 0.8125rem;
+  color: var(--colour-text-muted);
+  font-style: italic;
+  margin-left: 0.25rem;
+}
+
+.comment-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+  margin-bottom: 0.375rem;
+}
+
+.comment-dot {
+  color: var(--colour-text-muted);
+}
+
+.comment-body {
+  font-size: 1rem;
+  color: var(--colour-text);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-bottom: 0.5rem;
+}
+
+.comment-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Shared style for all comment action buttons (Reply, Delete) */
+.comment-action-btn {
+  background: none;
+  border: none;
+  color: var(--colour-text-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.375rem 0.625rem;
+  border-radius: 4px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.comment-action-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--colour-text);
+}
+
+.comment-action-btn:active {
+  background-color: rgba(0, 0, 0, 0.1);
+  color: var(--colour-primary);
+}
+
+/* Delete button — red on hover to signal destructive action */
+.comment-delete-btn:hover {
+  color: var(--colour-error);
+  background-color: var(--colour-error-bg);
+}
+
+/* Inline delete confirmation (avoids jarring modals) */
+.comment-delete-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+}
+
+.comment-delete-confirm-text {
+  color: var(--colour-error);
+  font-weight: 600;
+}
+
+.comment-delete-confirm-yes,
+.comment-delete-confirm-no {
+  background: none;
+  border: 1px solid var(--colour-border);
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.comment-delete-confirm-yes {
+  color: var(--colour-error);
+  border-color: var(--colour-error);
+}
+
+.comment-delete-confirm-yes:hover {
+  background-color: var(--colour-error);
+  color: #fff;
+}
+
+.comment-delete-confirm-no {
+  color: var(--colour-text-muted);
+}
+
+.comment-delete-confirm-no:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--colour-text);
+}
+
+/* [deleted] placeholder label for soft-deleted comments */
+.comment-deleted-label {
+  color: var(--colour-text-muted);
+  font-style: italic;
+  font-size: 0.875rem;
+}
+
+/* Children container — no extra spacing needed, the recursive
+   comment-thread handles indentation via inline marginLeft */
+.comment-children {
+  margin-top: 0;
+}
+
+/* ─── Comment Composer (sticky bottom) ─────────────────────── */
+
+.comment-composer {
+  position: fixed;
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--colour-surface);
+  border-top: 1px solid var(--colour-border);
+  max-width: var(--max-width);
+  margin: 0 auto;
+}
+
+.comment-composer-reply-to {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.375rem 0.75rem;
+  background: #f3f4f6;
+  font-size: 0.75rem;
+  color: var(--colour-primary);
+}
+
+.comment-composer-reply-clear {
+  background: none;
+  border: none;
+  color: var(--colour-text-muted);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0 0.25rem;
+}
+
+.comment-composer-images {
+  display: flex;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+}
+
+.comment-composer-image-thumb {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.comment-composer-image-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.comment-composer-image-thumb button {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  border: none;
+  font-size: 0.6875rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.comment-composer-input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.comment-composer-input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--colour-border);
+  border-radius: 1.25rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  resize: none;
+  min-height: 2.25rem;
+  max-height: 6rem;
+  line-height: 1.4;
+  color: var(--colour-text);
+  background: var(--colour-input-bg);
+}
+
+.comment-composer-input:focus {
+  outline: none;
+  border-color: var(--colour-primary);
+}
+
+.comment-composer-send {
+  background: var(--colour-primary);
+  color: #ffffff;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.comment-composer-send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ─── Loading Skeletons ────────────────────────────────────── */
+
+.skeleton-card {
+  background: var(--colour-surface);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.skeleton-card::before {
+  content: '';
+  display: block;
+  height: 0.875rem;
+  width: 60%;
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-card::after {
+  content: '';
+  display: block;
+  height: 0.625rem;
+  width: 40%;
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+.skeleton-block {
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 4px;
+  width: 100%;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+ * Username Links — clickable @username throughout the app
+ * ═══════════════════════════════════════════════════════════════
+ * These render as blue text that looks like a link but is actually
+ * a <button> so it can sit inside other clickable containers
+ * (e.g. PostCard) without nesting <a> inside <a>.
+ */
+
+.username-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  font-size: inherit;
+  color: var(--colour-primary);
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 0.1s ease;
+}
+
+.username-link:hover {
+  text-decoration: underline;
+}
+
+.username-link:active {
+  opacity: 0.7;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+ * User Profile Modal — slide-up sheet for @username taps
+ * ═══════════════════════════════════════════════════════════════
+ * Follows the exact same pattern as the RegionBottomSheet.
+ * Overlay → Sheet → Content with swipe-to-dismiss.
+ */
+
+.user-profile-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+  background-color: rgba(0, 0, 0, 0);
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+  transition:
+    background-color 0.4s cubic-bezier(0.32, 0.72, 0, 1),
+    backdrop-filter 0.4s cubic-bezier(0.32, 0.72, 0, 1),
+    -webkit-backdrop-filter 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.user-profile-overlay.open {
+  pointer-events: auto;
+  background-color: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.user-profile-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 201;
+  background-color: var(--colour-surface);
+  border-radius: 1rem 1rem 0 0;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+  transform: translateY(100%);
+  transition: transform 0.44s cubic-bezier(0.32, 0.72, 0, 1);
+  max-height: 50vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  /* Safe area for bottom of screen on iOS */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.user-profile-sheet.open {
+  transform: translateY(0);
+}
+
+.user-profile-content {
+  padding: 0.5rem 1.25rem 1.5rem;
+}
+
+.user-profile-loading {
+  color: var(--colour-text-muted);
+  font-size: 0.875rem;
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.user-profile-error {
+  color: var(--colour-error);
+  font-size: 0.875rem;
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.user-profile-username {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--colour-primary);
+  margin-bottom: 0.25rem;
+}
+
+.user-profile-verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #059669;
+  margin-bottom: 1rem;
+}
+
+.user-profile-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background-color: var(--colour-bg);
+  border-radius: var(--radius);
+}
+
+.user-profile-field {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+}
+
+.user-profile-field-label {
+  color: var(--colour-text-muted);
+  font-weight: 500;
+}
+
+.user-profile-field-value {
+  color: var(--colour-text);
+}
+
+.user-profile-field-link {
+  color: var(--colour-primary);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.user-profile-field-link:hover {
+  text-decoration: underline;
 }
