@@ -11,7 +11,7 @@
 //   5. Delete comments by this member (FK → profiles via author_id)
 //   6. Delete posts by this member + their dependents (comments, votes)
 //   7. Nullify invite_codes.created_by
-//   8. Reset invite_codes.used_by (free codes for reuse)
+//   8. Delete invite_codes used by this member (code is consumed)
 //   9. Delete the profile row
 //  10. Delete the auth user via Admin API
 //
@@ -205,15 +205,17 @@ serve(async (req: Request) => {
       console.error("Failed to nullify created_by:", createdByError.message);
     }
 
-    // --- Step 7: Reset invite codes used by this member ---
-    // This frees the code back up for reuse
-    const { error: resetCodeError } = await adminClient
+    // --- Step 7: Delete invite codes used by this member ---
+    // The code was consumed when the member registered — now that the
+    // member is deleted, the code should disappear too (not reappear
+    // as available).
+    const { error: deleteCodeError } = await adminClient
       .from("invite_codes")
-      .update({ used_by: null, used_at: null })
+      .delete()
       .eq("used_by", user_id);
 
-    if (resetCodeError) {
-      console.error("Failed to reset invite codes:", resetCodeError.message);
+    if (deleteCodeError) {
+      console.error("Failed to delete used invite codes:", deleteCodeError.message);
     }
 
     // --- Step 8: Delete the profile row ---
