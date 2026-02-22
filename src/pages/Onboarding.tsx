@@ -113,14 +113,19 @@ export function Onboarding() {
 
     /* Store the full postcode (uppercased, trimmed) */
     const fullPostcode = postcode.trim().toUpperCase();
-    /* Also extract the postcode area (1-2 letters) for quick lookups */
-    const postcodeArea = fullPostcode.match(/^[A-Z]{1,2}/)?.[0] || '';
+    /**
+     * Extract the outward code (the part before the space in a UK postcode).
+     * UK outward codes are 2–4 characters: 1-2 letters + 1-2 digits + optional letter.
+     * Examples: BS14, SW1A, N1, EC1A, W1, B1.
+     * We split on space and take the first part to get the full outward code.
+     */
+    const outwardCode = fullPostcode.replace(/\s+/g, ' ').split(' ')[0] || '';
 
     const { error: updateError } = await supabase
       .from('profiles')
       .update({
         region_id: regionData.id,
-        postcode_area: postcodeArea,
+        postcode_area: outwardCode,
         updated_at: new Date().toISOString(),
       })
       .eq('id', profile?.id);
@@ -361,7 +366,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: '100%',
     padding: '0.875rem',
     backgroundColor: 'var(--colour-primary)',
-    color: '#ffffff',
+    color: 'var(--colour-text-inverse)',
     border: 'none',
     borderRadius: 'var(--radius)',
     fontSize: '1rem',
@@ -408,7 +413,7 @@ const styles: Record<string, React.CSSProperties> = {
   mapConfirmButton: {
     padding: '0.75rem 2rem',
     backgroundColor: 'var(--colour-success)',
-    color: '#ffffff',
+    color: 'var(--colour-text-inverse)',
     border: 'none',
     borderRadius: 'var(--radius)',
     fontSize: '1rem',

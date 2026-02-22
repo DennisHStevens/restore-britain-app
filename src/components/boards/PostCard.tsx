@@ -38,6 +38,7 @@ export function PostCard({ post, boardSlug, onUsernameClick }: PostCardProps) {
 
   const authorUsername = post.author?.username || 'unknown';
   const authorRole = post.author?.role || 'member';
+  const showPostcode = post.author?.display_postcode && post.author?.postcode_area;
 
   return (
     <article className="post-card" onClick={handleClick}>
@@ -62,15 +63,16 @@ export function PostCard({ post, boardSlug, onUsernameClick }: PostCardProps) {
         {post.title}
       </h3>
 
-      {/* Author + role badge + time */}
+      {/* Author + role badge + postcode badge + time */}
       <div className="post-card-meta">
         <button className="username-link" onClick={handleAuthorClick}>
           @{authorUsername}
         </button>
-        {authorRole !== 'member' && (
-          <span className={`role-badge role-badge-${authorRole}`}>
-            {authorRole === 'super_admin' ? 'admin' : authorRole}
-          </span>
+        <span className={`role-badge role-badge-${authorRole}`}>
+          {authorRole === 'super_admin' ? 'admin' : authorRole}
+        </span>
+        {showPostcode && (
+          <span className="postcode-badge">{post.author.postcode_area}</span>
         )}
         <span className="post-card-dot">·</span>
         <TimeAgo timestamp={post.created_at} />

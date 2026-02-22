@@ -4,6 +4,9 @@ import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import type { Role } from '../hooks/useAuth';
 
+/** Admin-only CSS — only loaded when this component mounts (Vite code-splits it). */
+import '../admin.css';
+
 /**
  * AdminPanel — admin-only page for platform management.
  *

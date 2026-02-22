@@ -23,6 +23,106 @@ Each entry follows this structure:
 
 ## Active Decisions
 
+### DEC-055: Eliminate render-blocking CSS
+**Date:** 22 Feb 2026
+**Context:** Lighthouse flagged the Google Fonts stylesheet as render-blocking, adding ~300ms to FCP.
+**Decision:** Changed the Google Fonts `<link>` in index.html to use the `media="print" onload="this.media='all'"` pattern, with a `<link rel="preload" as="style">` hint. This loads fonts asynchronously without blocking first paint. Added `<noscript>` fallback for progressive enhancement.
+**Alternatives:** (1) Self-host fonts (faster but more build complexity). (2) Font-display: optional in @font-face (less control). Both deferred.
+**Impact:** ~300ms FCP saving. Fonts may flash briefly on slow connections (FOUT), but `display=swap` already handles this gracefully.
+**Status:** Active
+
+---
+
+### DEC-054: Extract admin CSS to separate lazy-loaded file
+**Date:** 22 Feb 2026
+**Context:** Lighthouse flagged ~14 KiB of unused CSS. The admin panel styles (~7 KiB) were in global.css but only used on the admin page.
+**Decision:** Extracted all admin panel and invite code card styles into `src/admin.css`. The AdminPanel component now imports this file directly. Vite code-splits CSS imports in lazy-loaded routes, so admin styles are only fetched when a super_admin navigates to the admin panel.
+**Alternatives:** (1) CSS modules per component (too much refactoring for a global-css project). (2) PurgeCSS at build time (risky with dynamic class names). Both rejected.
+**Impact:** ~7 KiB reduction in initial CSS payload for all non-admin users.
+**Status:** Active
+
+---
+
+### DEC-053: Glowing role badges for all roles
+**Date:** 22 Feb 2026
+**Context:** Dennis requested visually distinct role badges: member=blue glow, commander=yellow glow, super_admin=red glow. Previously, member role was hidden and only commander/admin were shown.
+**Decision:** All roles now display a badge with a coloured glow (box-shadow). Member badge uses blue (#3b82f6), commander uses yellow (#eab308), super_admin uses red (#ef4444). The unused "admin" role's badge was removed from the UI (admin panel role tags retained). Super_admin badge displays as "admin" in the text label for user-friendliness.
+**Alternatives:** (1) Keep member badge hidden (rejected — Dennis wants visible role differentiation). (2) Use border instead of glow (less visually distinctive).
+**Impact:** Every post and comment shows the author's role with a glowing badge.
+**Status:** Active
+
+---
+
+### DEC-052: Postcode badge on posts and comments
+**Date:** 22 Feb 2026
+**Context:** Dennis wants members to optionally show their postcode area next to their name on posts/comments, giving a sense of locality.
+**Decision:** Added `display_postcode` boolean to profiles table (default false). Profile page has a toggle switch to control it. When enabled, a `.postcode-badge` appears after the role badge on PostCard, CommentItem, and PostDetail. The badge shows the user's `postcode_area` (full outward code, e.g. "BS14"). Both Post and Comment types in boardsApi.ts now join `postcode_area` and `display_postcode` from profiles.
+**Alternatives:** (1) Always show postcode for everyone (rejected — privacy concern). (2) Show region name instead (less granular, rejected by Dennis).
+**Impact:** Users can opt-in to showing their postcode area. Requires migration 010.
+**Status:** Active
+
+---
+
+### DEC-051: Postcode saves full outward code
+**Date:** 22 Feb 2026
+**Context:** The postcode extraction regex `/^[A-Z]{1,2}/` only captured the letter prefix (e.g. "BS" from "BS14 8QG"). UK outward codes include digits.
+**Decision:** Changed both Onboarding.tsx and Profile.tsx to use `fullPostcode.replace(/\s+/g, ' ').split(' ')[0]` which captures the full outward code (e.g. "BS14", "SW1A", "N1").
+**Alternatives:** None — the old regex was simply wrong for UK postcodes.
+**Impact:** New sign-ups and profile edits now save the correct outward code. Existing users with truncated codes need to re-save their postcode.
+**Status:** Active
+
+---
+
+### DEC-050: Board description editing by super_admin + region-board link
+**Date:** 22 Feb 2026
+**Context:** Dennis wanted: (1) Map region taps to navigate to the regional board instead of national. (2) The region bottom sheet to show the board's description. (3) Super admins to edit board descriptions from within the board view. (4) User's own region board pinned alongside national in the board list.
+**Decision:** RegionBottomSheet.tsx now fetches the regional board (via scope_type='region', scope_id=region.id) and uses its description + slug. BoardView.tsx has an edit/save description UI for super_admins using `updateBoardDescription()`. BoardList.tsx uses `fetchBoards(profile?.region_id)` which pins the user's region board to sort_order=1 client-side.
+**Alternatives:** (1) Database-level pinning per user (migration overhead, rejected for now). (2) Separate description editing page (rejected — inline is faster).
+**Impact:** Regions and boards are now properly linked. Board descriptions are the source of truth for region descriptions. Requires migration 010 for the UPDATE RLS policy on boards.
+**Status:** Active
+
+---
+
+### DEC-049: Pin/unpin posts — super_admin only, max 3 per board
+**Date:** 22 Feb 2026
+**Context:** Dennis wanted the ability to pin important posts to the top of a board, limited to 3 concurrent pins per board.
+**Decision:** Added `pinPost()` and `countPinnedPosts()` to boardsApi.ts. The pin button is visible only to super_admin users in PostDetail.tsx's moderation toolbar. Client-side enforcement checks the count before allowing a pin. The `is_pinned` boolean on the posts table controls visibility. NOTE: RLS may need a policy update to allow super_admins to update `is_pinned` on any post (not just their own).
+**Alternatives:** (1) Separate pinned_posts join table (rejected — overkill for a boolean flag). (2) Allow all moderators to pin (rejected — Dennis wants super_admin only for now).
+**Impact:** Super admins can pin up to 3 posts per board. Pinned posts should be rendered at the top of the feed (ordering logic to be added).
+**Status:** Active
+
+---
+
+### DEC-048: Live member/post counts instead of cached columns
+**Date:** 22 Feb 2026
+**Context:** The `regions.member_count` and boards' `post_count` columns are incremented by triggers but never decremented when members or posts are deleted (soft or hard). This caused stale counts in the UI.
+**Decision:** Compute live counts at query time using Supabase `select('id', { count: 'exact', head: true })` — an efficient HEAD request that returns only the count. RegionBottomSheet.tsx fetches live member count from `profiles` table filtered by `region_id`. `fetchBoards()` in boardsApi.ts computes live post counts from `posts` table filtered by `board_id` and `deleted_at IS NULL`.
+**Alternatives:** (1) Fix the triggers to also decrement on delete (requires migration, handles both soft and hard delete). (2) Scheduled reconciliation job. Both rejected for now — live counts are fast enough and always accurate.
+**Impact:** Member counts on region bottom sheets and post counts on board list are always accurate.
+**Status:** Active
+
+---
+
+### DEC-047: UX audit and systematic UI improvements
+**Date:** 22 Feb 2026
+**Context:** After completing the core MVP, Dennis requested a comprehensive UX audit scoring the app against top-rated app benchmarks.
+**Decision:** Conducted a full UX audit scoring 72/100 across 10 categories (Navigation, Onboarding, Visual Design, Typography, Touch Targets, Feedback, Performance, Content, Accessibility, Engagement). Identified and fixed P0 issues (developer slugs in UI), P1 issues (missing logos on auth pages, heading font inconsistency, undersized touch targets). Report saved to `docs/ux-audit-report.md`.
+**Alternatives:** N/A — audit-driven approach.
+**Impact:** Login/Register pages now show the RB logo with Montserrat headings. All interactive elements meet Apple HIG 44px minimum. Board names are human-readable throughout.
+**Status:** Active
+
+---
+
+### DEC-046: Replace developer-facing "gb/{slug}" with human-readable board names
+**Date:** 22 Feb 2026
+**Context:** The UI was showing raw developer-facing slugs like "gb/national" and "gb/west-midlands" everywhere — board headers, breadcrumbs, empty states, comments. This is confusing for non-technical users.
+**Decision:** Replaced all instances of `gb/{board.slug}` with `board.name` across BoardList.tsx, BoardView.tsx, PostDetail.tsx, NewPost.tsx, RegionBottomSheet.tsx, and App.tsx. The Board type already had a `.name` field with human-readable names — we just needed to use it.
+**Alternatives:** None — this was a straightforward bug fix.
+**Impact:** All user-facing board references now show names like "National" or "West Midlands" instead of "gb/national" or "gb/west-midlands".
+**Status:** Active
+
+---
+
 ### DEC-045: Login with email OR username via SECURITY DEFINER RPC
 **Date:** 22 Feb 2026
 **Context:** Members requested the ability to log in with their username instead of their email. Supabase Auth's `signInWithPassword` only accepts email, and RLS blocks unauthenticated users from querying the profiles table — so the client can't resolve username → email before signing in.

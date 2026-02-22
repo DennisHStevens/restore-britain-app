@@ -457,11 +457,23 @@ Everything we build serves this. Every goal, every phase, every task is measured
 - [x] Ensure the bottom sheet (region detail view) uses brand colours and fonts consistently — ✅ Completed: 22 Feb 2026, 22:15
 
 *Lighthouse performance improvements (from Phase 1.7 audit — Performance 85, target 90+):*
-- [ ] Add `<main>` landmark to all page layouts (Accessibility: "Document does not have a main landmark" — costs 3 points)
-- [ ] Lazy-load MapLibre GL only on the map page (code-splitting) — saves ~324 KiB unused JS on login/boards pages, biggest FCP win
-- [ ] Eliminate render-blocking CSS — inline critical CSS or defer non-critical styles (est. 300ms FCP saving)
-- [ ] Reduce unused CSS (~14 KiB)
+- [x] Add `<main>` landmark to all page layouts — ✅ Completed: 22 Feb 2026, 21:00
+- [x] Lazy-load MapLibre GL only on the map page (code-splitting via React.lazy + Suspense) — ✅ Completed: 22 Feb 2026, 21:00
+- [x] Eliminate render-blocking CSS — defer Google Fonts via media="print" swap pattern — ✅ Completed: 22 Feb 2026, 23:30
+- [x] Reduce unused CSS (~14 KiB) — extracted admin CSS to lazy-loaded src/admin.css (~7 KiB) — ✅ Completed: 22 Feb 2026, 23:30
 - [ ] Re-run Lighthouse after fixes — target: Performance 90+, Accessibility 100
+
+*UX audit and systematic fixes (DEC-046 through DEC-049):*
+- [x] Comprehensive UX audit — scored 72/100, report saved to `docs/ux-audit-report.md` — ✅ Completed: 22 Feb 2026, 21:30
+- [x] P0 fix: Replace all developer-facing `gb/{slug}` with human-readable `board.name` across 6 files (DEC-046) — ✅ Completed: 22 Feb 2026, 21:40
+- [x] Fix stale member count in RegionBottomSheet: live count from profiles table (DEC-048) — ✅ Completed: 22 Feb 2026, 21:50
+- [x] Fix stale post count in BoardList: live count from posts table (DEC-048) — ✅ Completed: 22 Feb 2026, 21:50
+- [x] P1 fix: Add RB logo to Login.tsx and Register.tsx — ✅ Completed: 22 Feb 2026, 22:00
+- [x] P1 fix: Apply Montserrat heading font to all page titles in global.css — ✅ Completed: 22 Feb 2026, 22:00
+- [x] P1 fix: Enlarge comment send button (36px → 44px) and header icons (36px → 40px) for Apple HIG compliance — ✅ Completed: 22 Feb 2026, 22:00
+- [x] Add back arrow navigation to BoardView header — ✅ Completed: 22 Feb 2026, 22:05
+- [x] Add pin/unpin post functionality: super_admin only, max 3 per board (DEC-049) — ✅ Completed: 22 Feb 2026, 22:10
+- [x] TypeScript check: zero errors after all changes — ✅ Completed: 22 Feb 2026, 22:15
 
 *Verification:*
 - [ ] Visual review: screenshot every screen on a phone (login, registration, map, region detail, profile, profile edit) and verify brand consistency

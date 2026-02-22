@@ -42,6 +42,7 @@ export function CommentItem({ comment, depth, currentUserId, canModerate, onRepl
   const isDeleted = comment.deleted_at !== null;
   const authorUsername = isDeleted ? 'deleted' : (comment.author?.username || 'unknown');
   const authorRole = isDeleted ? 'member' : (comment.author?.role || 'member');
+  const showPostcode = !isDeleted && comment.author?.display_postcode && comment.author?.postcode_area;
   const isOwnComment = !isDeleted && comment.author_id === currentUserId;
   // Moderators can delete any non-deleted comment (but not their own — that's already covered by isOwnComment)
   const canModDelete = !isDeleted && canModerate && !isOwnComment;
@@ -169,10 +170,11 @@ export function CommentItem({ comment, depth, currentUserId, canModerate, onRepl
           <button className="username-link" onClick={handleAuthorClick}>
             @{authorUsername}
           </button>
-          {authorRole !== 'member' && (
-            <span className={`role-badge role-badge-${authorRole}`}>
-              {authorRole === 'super_admin' ? 'admin' : authorRole}
-            </span>
+          <span className={`role-badge role-badge-${authorRole}`}>
+            {authorRole === 'super_admin' ? 'admin' : authorRole}
+          </span>
+          {showPostcode && (
+            <span className="postcode-badge">{comment.author.postcode_area}</span>
           )}
           <span className="comment-dot">·</span>
           <TimeAgo timestamp={comment.created_at} />

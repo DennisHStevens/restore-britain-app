@@ -45,6 +45,8 @@ export interface Post {
     username: string;
     region_id: string | null;
     role: string;
+    postcode_area: string | null;
+    display_postcode: boolean;
   };
 }
 
@@ -64,6 +66,8 @@ export interface Comment {
   author: {
     username: string;
     role: string;
+    postcode_area: string | null;
+    display_postcode: boolean;
   };
   /** If replying to another comment, the name of that comment's author */
   reply_to_author_name?: string;
@@ -85,10 +89,18 @@ const PAGE_SIZE = 20;
 // ─── Board queries ───────────────────────────────────────────
 
 /**
- * Fetch all boards. For MVP this returns just gb/national,
- * but the query supports any number of boards.
+ * Fetch all boards with live post counts, with the user's own region
+ * board pinned alongside national.
+ *
+ * All boards are visible to all users. The user's own region's board
+ * gets sort_order temporarily set to 1 (just after national at 0) so
+ * it appears pinned at the top. Other regional boards follow
+ * alphabetically.
+ *
+ * @param userRegionId — the current user's region_id (from profile).
+ *   Used to pin their own region's board to the top.
  */
-export async function fetchBoards(): Promise<Board[]> {
+export async function fetchBoards(userRegionId?: string | null): Promise<Board[]> {
   // Sort by sort_order first (national=0 at top, regional=10 after),
   // then alphabetically by name within each group
   const { data, error } = await supabase
@@ -98,7 +110,46 @@ export async function fetchBoards(): Promise<Board[]> {
     .order('name', { ascending: true });
 
   if (error) throw error;
-  return data as Board[];
+  const boards = data as Board[];
+
+  /**
+   * Pin the user's own region board to the top (alongside national)
+   * by temporarily lowering its sort_order to 1.
+   */
+  if (userRegionId) {
+    for (const board of boards) {
+      if (board.scope_type === 'region' && board.scope_id === userRegionId) {
+        board.sort_order = 1; // Just after national (0)
+        break;
+      }
+    }
+    // Re-sort after pinning: sort_order ascending, then name ascending
+    boards.sort((a, b) => {
+      if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  /**
+   * Fetch live post counts for all boards in parallel.
+   * This replaces the stale cached post_count column value.
+   * Only counts non-deleted posts (deleted_at IS NULL).
+   */
+  await Promise.all(
+    boards.map(async (board) => {
+      const { count, error: countError } = await supabase
+        .from('posts')
+        .select('id', { count: 'exact', head: true })
+        .eq('board_id', board.id)
+        .is('deleted_at', null);
+
+      if (!countError && count !== null) {
+        board.post_count = count;
+      }
+    })
+  );
+
+  return boards;
 }
 
 /**
@@ -116,6 +167,24 @@ export async function fetchBoardBySlug(slug: string): Promise<Board | null> {
     throw error;
   }
   return data as Board;
+}
+
+/**
+ * Update a board's description (super_admin only).
+ *
+ * RLS must allow super_admins to UPDATE the boards table.
+ * See migration 010 for the required policy.
+ */
+export async function updateBoardDescription(
+  boardId: string,
+  description: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('boards')
+    .update({ description: description.trim() || null })
+    .eq('id', boardId);
+
+  if (error) throw error;
 }
 
 // ─── Post queries ────────────────────────────────────────────
@@ -142,7 +211,7 @@ export async function fetchPosts(
       id, board_id, author_id, title, body, image_urls,
       is_pinned, is_locked, upvote_count, comment_count,
       last_comment_at, created_at, updated_at,
-      author:profiles!posts_author_id_fkey(username, region_id, role)
+      author:profiles!posts_author_id_fkey(username, region_id, role, postcode_area, display_postcode)
     `)
     .eq('board_id', boardId)
     .is('deleted_at', null);
@@ -205,7 +274,7 @@ export async function fetchPost(postId: string): Promise<Post | null> {
       id, board_id, author_id, title, body, image_urls,
       is_pinned, is_locked, upvote_count, comment_count,
       last_comment_at, created_at, updated_at,
-      author:profiles!posts_author_id_fkey(username, region_id, role)
+      author:profiles!posts_author_id_fkey(username, region_id, role, postcode_area, display_postcode)
     `)
     .eq('id', postId)
     .is('deleted_at', null)
@@ -263,7 +332,7 @@ export async function fetchComments(postId: string): Promise<Comment[]> {
     .select(`
       id, post_id, author_id, body, image_urls,
       reply_to_id, upvote_count, created_at, updated_at, deleted_at,
-      author:profiles!comments_author_id_fkey(username, role)
+      author:profiles!comments_author_id_fkey(username, role, postcode_area, display_postcode)
     `)
     .eq('post_id', postId)
     .order('created_at', { ascending: true });
@@ -431,6 +500,40 @@ export async function castVote(
 }
 
 // ─── Moderation actions ─────────────────────────────────────
+
+/**
+ * Pin or unpin a post (super_admin only).
+ *
+ * Pinned posts appear at the top of the board feed regardless of sort.
+ * Maximum 3 pinned posts per board — if the limit is already reached,
+ * the caller should unpin one before pinning another.
+ *
+ * RLS allows: admins/super_admins (any board).
+ */
+export async function pinPost(postId: string, pinned: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('posts')
+    .update({ is_pinned: pinned })
+    .eq('id', postId);
+
+  if (error) throw error;
+}
+
+/**
+ * Count how many posts are currently pinned in a board.
+ * Used to enforce the max-3-pinned-posts limit.
+ */
+export async function countPinnedPosts(boardId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('posts')
+    .select('id', { count: 'exact', head: true })
+    .eq('board_id', boardId)
+    .eq('is_pinned', true)
+    .is('deleted_at', null);
+
+  if (error) throw error;
+  return count ?? 0;
+}
 
 /**
  * Lock or unlock a post.

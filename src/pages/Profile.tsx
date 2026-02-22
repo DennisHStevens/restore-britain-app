@@ -21,6 +21,7 @@ export function Profile() {
   const [username, setUsername] = useState('');
   const [xHandle, setXHandle] = useState('');
   const [editPostcode, setEditPostcode] = useState('');
+  const [displayPostcode, setDisplayPostcode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -50,9 +51,29 @@ export function Profile() {
     setUsername(profile?.username || '');
     setXHandle(profile?.x_handle || '');
     setEditPostcode(profile?.postcode_area || '');
+    setDisplayPostcode(profile?.display_postcode ?? false);
     setSaveError('');
     setSaveSuccess(false);
     setEditing(true);
+  }
+
+  /**
+   * Quick-toggle display_postcode without entering full edit mode.
+   * Updates the profile directly and refreshes.
+   */
+  async function handleToggleDisplayPostcode(checked: boolean) {
+    setSaving(true);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ display_postcode: checked, updated_at: new Date().toISOString() })
+      .eq('id', profile?.id);
+
+    setSaving(false);
+    if (error) {
+      console.error('[Profile] Toggle display_postcode failed:', error);
+    } else {
+      refreshProfile();
+    }
   }
 
   async function handleSave() {
@@ -73,6 +94,7 @@ export function Profile() {
     const updatePayload: Record<string, unknown> = {
       username: username.trim(),
       x_handle: xHandle.trim() || null,
+      display_postcode: displayPostcode,
       updated_at: new Date().toISOString(),
     };
 
@@ -103,8 +125,9 @@ export function Profile() {
         return;
       }
 
-      const postcodeArea = trimmedPostcode.match(/^[A-Z]{1,2}/)?.[0] || '';
-      updatePayload.postcode_area = postcodeArea;
+      /* Extract full outward code (e.g. BS14, SW1A, N1) not just the letter prefix */
+      const outwardCode = trimmedPostcode.replace(/\s+/g, ' ').split(' ')[0] || '';
+      updatePayload.postcode_area = outwardCode;
       updatePayload.region_id = regionData.id;
     }
 
@@ -235,6 +258,26 @@ export function Profile() {
                 {profile?.postcode_area || <span style={{ color: 'var(--colour-text-muted)', fontStyle: 'italic' }}>Not set</span>}
               </span>
             )}
+          </div>
+
+          {/* Display Postcode toggle — controls whether postcode badge shows on posts/comments */}
+          <div style={styles.field}>
+            <span style={styles.fieldLabel}>Display Postcode</span>
+            <label className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={editing ? displayPostcode : (profile?.display_postcode ?? false)}
+                onChange={(e) => {
+                  if (editing) {
+                    setDisplayPostcode(e.target.checked);
+                  } else {
+                    handleToggleDisplayPostcode(e.target.checked);
+                  }
+                }}
+                disabled={saving}
+              />
+              <span className="toggle-slider" />
+            </label>
           </div>
 
           {/* Region — derived from postcode, read-only */}
@@ -369,7 +412,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: '100%',
     padding: '0.75rem',
     backgroundColor: 'var(--colour-primary)',
-    color: '#ffffff',
+    color: 'var(--colour-text-inverse)',
     border: 'none',
     borderRadius: 'var(--radius)',
     fontSize: '0.875rem',
@@ -380,7 +423,7 @@ const styles: Record<string, React.CSSProperties> = {
     flex: 1,
     padding: '0.75rem',
     backgroundColor: 'var(--colour-primary)',
-    color: '#ffffff',
+    color: 'var(--colour-text-inverse)',
     border: 'none',
     borderRadius: 'var(--radius)',
     fontSize: '0.875rem',

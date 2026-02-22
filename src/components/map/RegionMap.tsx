@@ -19,7 +19,6 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import {
-  REGION_COLOURS,
   REGION_NAMES,
 } from './regionColours';
 
@@ -55,6 +54,16 @@ interface RegionMapProps {
 /** Sea colour — soft blue background behind the land polygons */
 const SEA_COLOUR = theme.colours.map.seaBackground;
 
+/**
+ * Unified region fill colour — all regions use the same brand colour.
+ * Pre-blended at 0.85 opacity over the sea background to avoid the
+ * diagonal line artefact from WebGL alpha compositing.
+ * Formula: regionFill (#6da8d6) × 0.85 + sea (#dbe9f4) × 0.15 = #7EB2DB
+ */
+const REGION_FILL = '#7EB2DB';
+/** Darker pre-blended colour for hover/selected state (0.95 opacity blend) */
+const REGION_FILL_HOVER = '#609FCE';
+
 /** White borders between regions */
 const BORDER_COLOUR = theme.colours.map.regionBorder;
 const BORDER_WIDTH = 1.5;
@@ -84,20 +93,7 @@ const MAX_BOUNDS: maplibregl.LngLatBoundsLike = [
   [3, 60],   // Northeast corner (tightened after Shetland/Orkney removal)
 ];
 
-/**
- * Build a MapLibre match expression for region fill colours.
- * Falls back to a neutral grey for any unrecognised feature IDs.
- */
-function buildColourExpression(
-  colours: Record<string, string>
-): maplibregl.ExpressionSpecification {
-  const entries: (string | maplibregl.ExpressionSpecification)[] = ['match', ['get', 'id']];
-  for (const [id, colour] of Object.entries(colours)) {
-    entries.push(id, colour);
-  }
-  entries.push('#cccccc'); // fallback
-  return entries as unknown as maplibregl.ExpressionSpecification;
-}
+/* buildColourExpression removed — all regions now use a single unified colour */
 
 export function RegionMap({ onRegionSelect, onBackgroundClick }: RegionMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -206,7 +202,18 @@ export function RegionMap({ onRegionSelect, onBackgroundClick }: RegionMapProps)
         type: 'fill',
         source: 'regions',
         paint: {
-          'fill-color': buildColourExpression(REGION_COLOURS),
+          /**
+           * Unified fill colour for all regions.
+           * Uses feature-state 'hover' to darken on tap/hover.
+           * Pre-blended colours at full opacity to avoid WebGL
+           * triangulation seam artefacts (see regionColours.ts docs).
+           */
+          'fill-color': [
+            'case',
+            ['boolean', ['feature-state', 'hover'], false],
+            REGION_FILL_HOVER,
+            REGION_FILL,
+          ] as unknown as maplibregl.ExpressionSpecification,
           'fill-opacity': 1.0,
           'fill-antialias': false,
         },
@@ -223,12 +230,26 @@ export function RegionMap({ onRegionSelect, onBackgroundClick }: RegionMapProps)
         },
       });
 
-      /* Pointer cursor on hover over regions */
-      map.on('mouseenter', 'region-fills', () => {
+      /* Hover state tracking — highlights the region under the cursor/finger */
+      let hoveredRegionId: string | null = null;
+
+      map.on('mousemove', 'region-fills', (e) => {
         map.getCanvas().style.cursor = 'pointer';
+        if (e.features && e.features.length > 0) {
+          const id = e.features[0].properties?.id as string;
+          if (hoveredRegionId && hoveredRegionId !== id) {
+            map.setFeatureState({ source: 'regions', id: hoveredRegionId }, { hover: false });
+          }
+          hoveredRegionId = id;
+          map.setFeatureState({ source: 'regions', id }, { hover: true });
+        }
       });
       map.on('mouseleave', 'region-fills', () => {
         map.getCanvas().style.cursor = '';
+        if (hoveredRegionId) {
+          map.setFeatureState({ source: 'regions', id: hoveredRegionId }, { hover: false });
+          hoveredRegionId = null;
+        }
       });
 
       /* Tap/click handler — notify parent to open bottom sheet */

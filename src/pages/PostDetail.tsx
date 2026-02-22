@@ -7,6 +7,8 @@ import {
   createComment,
   deleteComment,
   lockPost,
+  pinPost,
+  countPinnedPosts,
   softDeletePost,
   fetchBoardBySlug,
 } from '../lib/boardsApi';
@@ -74,7 +76,7 @@ function buildCommentTree(flatComments: Comment[]): CommentNode[] {
 export function PostDetail() {
   const { slug, id } = useParams<{ slug: string; id: string }>();
   const navigate = useNavigate();
-  const { user, canModerateBoard } = useAuth();
+  const { user, canModerateBoard, isAtLeast } = useAuth();
 
   const [post, setPost] = useState<Post | null>(null);
   const [board, setBoard] = useState<Board | null>(null);
@@ -220,6 +222,46 @@ export function PostDetail() {
     }
   }
 
+  /**
+   * Whether the current user is super_admin — only super_admins can pin posts.
+   * Pinning is a heavier moderation action than locking/deleting, so we
+   * restrict it to the highest role for now.
+   */
+  const isSuperAdmin = isAtLeast('super_admin');
+
+  /** Maximum pinned posts per board */
+  const MAX_PINNED = 3;
+
+  // Handle pinning/unpinning a post (super_admin only)
+  async function handleTogglePin() {
+    if (!post || !board) return;
+
+    const newPinned = !post.is_pinned;
+
+    // If pinning (not unpinning), check the limit
+    if (newPinned) {
+      try {
+        const currentPinnedCount = await countPinnedPosts(board.id);
+        if (currentPinnedCount >= MAX_PINNED) {
+          alert(`Maximum ${MAX_PINNED} pinned posts allowed. Unpin one first.`);
+          return;
+        }
+      } catch (err) {
+        console.error('[PostDetail] Failed to count pinned posts:', err);
+        alert('Failed to check pin limit. Please try again.');
+        return;
+      }
+    }
+
+    try {
+      await pinPost(post.id, newPinned);
+      setPost((prev) => prev ? { ...prev, is_pinned: newPinned } : prev);
+    } catch (err) {
+      console.error('[PostDetail] Failed to toggle pin:', err);
+      alert('Failed to pin/unpin post. Please try again.');
+    }
+  }
+
   // Handle soft-deleting a post (moderator action)
   async function handleDeletePost() {
     if (!post) return;
@@ -277,12 +319,13 @@ export function PostDetail() {
 
   const authorUsername = post.author?.username || 'unknown';
   const authorRole = post.author?.role || 'member';
+  const showPostcode = post.author?.display_postcode && post.author?.postcode_area;
 
   return (
     <div className="post-detail-page">
       {/* Back navigation */}
       <button className="post-detail-back-btn" onClick={handleBack}>
-        ← gb/{slug}
+        ← {board?.name ?? 'Back'}
       </button>
 
       {/* Post content */}
@@ -310,10 +353,11 @@ export function PostDetail() {
           <button className="username-link" onClick={() => handleUsernameClick(post.author_id)}>
             @{authorUsername}
           </button>
-          {authorRole !== 'member' && (
-            <span className={`role-badge role-badge-${authorRole}`}>
-              {authorRole === 'super_admin' ? 'admin' : authorRole}
-            </span>
+          <span className={`role-badge role-badge-${authorRole}`}>
+            {authorRole === 'super_admin' ? 'admin' : authorRole}
+          </span>
+          {showPostcode && (
+            <span className="postcode-badge">{post.author.postcode_area}</span>
           )}
           <span className="post-detail-dot">·</span>
           <TimeAgo timestamp={post.created_at} />
@@ -347,6 +391,19 @@ export function PostDetail() {
         {/* Moderation toolbar — only visible to commanders (regional) and admins+ */}
         {canModerate && (
           <div className="post-mod-toolbar">
+            {/* Pin button — super_admin only */}
+            {isSuperAdmin && (
+              <button
+                className={`post-mod-btn ${post.is_pinned ? 'post-mod-btn-active' : ''}`}
+                onClick={handleTogglePin}
+                title={post.is_pinned ? 'Unpin this post' : 'Pin this post to the top (max 3)'}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/>
+                </svg>
+                {post.is_pinned ? 'Unpin' : 'Pin'}
+              </button>
+            )}
             <button
               className={`post-mod-btn ${post.is_locked ? 'post-mod-btn-active' : ''}`}
               onClick={handleToggleLock}

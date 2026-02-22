@@ -28,6 +28,8 @@ export interface Profile {
   x_handle: string | null;
   region_id: string | null;
   postcode_area: string | null;
+  /** Whether to show the postcode badge publicly on posts/comments */
+  display_postcode: boolean;
   is_verified: boolean;
   invite_code_used: string | null;
   role: Role;

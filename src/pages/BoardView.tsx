@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchBoardBySlug, fetchPosts } from '../lib/boardsApi';
+import { fetchBoardBySlug, fetchPosts, updateBoardDescription } from '../lib/boardsApi';
 import { SortTabs } from '../components/boards/SortTabs';
 import { PostCard } from '../components/boards/PostCard';
 import { UserProfileModal } from '../components/boards/UserProfileModal';
+import { useAuth } from '../hooks/useAuth';
 import type { Board, Post, SortMode } from '../lib/boardsApi';
 
 /**
@@ -20,6 +21,7 @@ import type { Board, Post, SortMode } from '../lib/boardsApi';
 export function BoardView() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const { isAtLeast } = useAuth();
 
   const [board, setBoard] = useState<Board | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -31,6 +33,12 @@ export function BoardView() {
 
   // User profile modal state
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
+
+  // Board description editing (super_admin only)
+  const [editingDescription, setEditingDescription] = useState(false);
+  const [descriptionDraft, setDescriptionDraft] = useState('');
+  const [savingDescription, setSavingDescription] = useState(false);
+  const isSuperAdmin = isAtLeast('super_admin');
 
   // Load board metadata
   useEffect(() => {
@@ -113,14 +121,90 @@ export function BoardView() {
     navigate(`/boards/${slug}/new`);
   }
 
+  /** Start editing the board description (super_admin only) */
+  function startEditDescription() {
+    setDescriptionDraft(board?.description || '');
+    setEditingDescription(true);
+  }
+
+  /** Save the edited board description */
+  async function saveDescription() {
+    if (!board) return;
+    setSavingDescription(true);
+    try {
+      await updateBoardDescription(board.id, descriptionDraft);
+      setBoard((prev) => prev ? { ...prev, description: descriptionDraft.trim() || null } : prev);
+      setEditingDescription(false);
+    } catch (err) {
+      console.error('[BoardView] Failed to update description:', err);
+      alert('Failed to save description. Check your permissions.');
+    } finally {
+      setSavingDescription(false);
+    }
+  }
+
   return (
     <div className="board-view">
-      {/* Board header */}
+      {/* Back button + Board header */}
+      <button className="board-view-back-btn" onClick={() => navigate('/boards')}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+        Boards
+      </button>
+
       {board && (
         <div className="board-view-header">
-          <h1 className="board-view-title">gb/{board.slug}</h1>
-          {board.description && (
-            <p className="board-view-description">{board.description}</p>
+          <h1 className="board-view-title">{board.name}</h1>
+
+          {/* Board description — editable for super_admin */}
+          {editingDescription ? (
+            <div className="board-view-desc-edit">
+              <textarea
+                className="board-view-desc-textarea"
+                value={descriptionDraft}
+                onChange={(e) => setDescriptionDraft(e.target.value)}
+                placeholder="Board description..."
+                rows={3}
+                maxLength={500}
+                autoFocus
+              />
+              <div className="board-view-desc-actions">
+                <button
+                  className="board-view-desc-cancel"
+                  onClick={() => setEditingDescription(false)}
+                  disabled={savingDescription}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="board-view-desc-save"
+                  onClick={saveDescription}
+                  disabled={savingDescription}
+                >
+                  {savingDescription ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {board.description && (
+                <p className="board-view-description">{board.description}</p>
+              )}
+              {isSuperAdmin && (
+                <button
+                  className="board-view-edit-desc-btn"
+                  onClick={startEditDescription}
+                  title="Edit board description"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                  {board.description ? 'Edit description' : 'Add description'}
+                </button>
+              )}
+            </>
           )}
         </div>
       )}
@@ -161,7 +245,7 @@ export function BoardView() {
         <div className="board-view-empty">
           <p className="board-view-empty-title">No posts yet</p>
           <p className="board-view-empty-subtitle">
-            Be the first to start a discussion in gb/{board.slug}
+            Be the first to start a discussion in {board.name}
           </p>
         </div>
       )}

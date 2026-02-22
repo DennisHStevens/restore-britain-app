@@ -54,8 +54,16 @@ const FEATURE_ID_TO_REGION_NAME: Record<string, string> = {
   W92000004: 'Wales',
 };
 
+/** Board data for the regional board linked to the selected region */
+interface RegionBoardData {
+  slug: string;
+  description: string | null;
+}
+
 export function RegionBottomSheet({ regionFeatureId, onDismiss }: RegionBottomSheetProps) {
   const [region, setRegion] = useState<RegionData | null>(null);
+  const [liveMemberCount, setLiveMemberCount] = useState<number | null>(null);
+  const [regionBoard, setRegionBoard] = useState<RegionBoardData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -91,15 +99,47 @@ export function RegionBottomSheet({ regionFeatureId, onDismiss }: RegionBottomSh
       .select('id, name, slug, description, telegram_group_url, member_count, is_active')
       .eq('name', regionName)
       .single()
-      .then(({ data, error: fetchError }) => {
+      .then(async ({ data, error: fetchError }) => {
         if (cancelled) return;
         if (fetchError) {
           console.error('[BottomSheet] Failed to fetch region:', fetchError);
           setError('Could not load region details.');
           setRegion(null);
-        } else {
-          setRegion(data as RegionData);
+          setLoading(false);
+          return;
         }
+
+        setRegion(data as RegionData);
+
+        /**
+         * Fetch the regional board linked to this region (scope_id = region.id)
+         * so we can show its description and navigate to it directly.
+         */
+        const { data: boardData } = await supabase
+          .from('boards')
+          .select('slug, description')
+          .eq('scope_type', 'region')
+          .eq('scope_id', data.id)
+          .single();
+
+        if (!cancelled && boardData) {
+          setRegionBoard(boardData as RegionBoardData);
+        }
+
+        /**
+         * Fetch a live member count from profiles instead of relying on
+         * the cached member_count column, which can become stale when
+         * members are deleted (the column isn't decremented on delete).
+         */
+        const { count, error: countError } = await supabase
+          .from('profiles')
+          .select('id', { count: 'exact', head: true })
+          .eq('region_id', data.id);
+
+        if (!cancelled && !countError && count !== null) {
+          setLiveMemberCount(count);
+        }
+
         setLoading(false);
       });
 
@@ -147,12 +187,12 @@ export function RegionBottomSheet({ regionFeatureId, onDismiss }: RegionBottomSh
   const navigate = useNavigate();
 
   /**
-   * Navigate to the gb/national board. Regional boards will be
-   * added in a future phase — for now all regions link to national.
+   * Navigate to the regional board. Falls back to national if
+   * no regional board is found (shouldn't happen — all 12 were seeded).
    */
   function viewBoard() {
     onDismiss();
-    navigate('/boards/national');
+    navigate(`/boards/${regionBoard?.slug ?? 'national'}`);
   }
 
   return (
@@ -189,17 +229,21 @@ export function RegionBottomSheet({ regionFeatureId, onDismiss }: RegionBottomSh
             <>
               <h2 className="bottom-sheet-title">{region.name}</h2>
 
-              {region.description && (
-                <p className="bottom-sheet-description">{region.description}</p>
+              {/* Show the board's description (not the region's) since Dennis
+                  wants the region bottom sheet to reflect the board content */}
+              {(regionBoard?.description || region.description) && (
+                <p className="bottom-sheet-description">
+                  {regionBoard?.description ?? region.description}
+                </p>
               )}
 
               <div className="bottom-sheet-stats">
                 <div className="bottom-sheet-stat">
                   <span className="bottom-sheet-stat-value">
-                    {region.member_count}
+                    {liveMemberCount ?? region.member_count}
                   </span>
                   <span className="bottom-sheet-stat-label">
-                    {region.member_count === 1 ? 'Member' : 'Members'}
+                    {(liveMemberCount ?? region.member_count) === 1 ? 'Member' : 'Members'}
                   </span>
                 </div>
 
@@ -209,9 +253,7 @@ export function RegionBottomSheet({ regionFeatureId, onDismiss }: RegionBottomSh
                 </div>
               </div>
 
-              {/* View Board button — links to gb/national for now.
-                  Regional boards (gb/west-midlands etc.) will be added
-                  when membership grows, mapped 1:1 to regions. */}
+              {/* View Board button — links to the region's own board */}
               <button
                 className="bottom-sheet-board-btn"
                 onClick={viewBoard}
@@ -219,7 +261,7 @@ export function RegionBottomSheet({ regionFeatureId, onDismiss }: RegionBottomSh
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
-                View gb/national Board
+                View {region.name} Board
               </button>
             </>
           )}
