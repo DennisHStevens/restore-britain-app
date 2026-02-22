@@ -383,7 +383,7 @@ Everything we build serves this. Every goal, every phase, every task is measured
 - [x] Test the full flow on the live URL: open URL → login → map loads → tap region → see detail panel → boards → post → profile → edit profile — ✅ Completed: 22 Feb 2026, 19:00
 - [x] Verify Supabase Edge Functions work in production (register with an invite code) — ✅ Completed: 22 Feb 2026, 19:15 (Dennis confirmed registration and login work on live URL)
 - [x] Test PWA install from the live URL: "Add to Home Screen" on iOS, verify fullscreen launch — ✅ Completed: 22 Feb 2026, 19:15 (Dennis confirmed Add to Home Screen works)
-- [ ] Run a Lighthouse audit: target scores of 90+ on Performance, Accessibility, Best Practices, and PWA
+- [x] Run a Lighthouse audit: target scores of 90+ on Performance, Accessibility, Best Practices, and PWA — ✅ Completed: 22 Feb 2026, 19:30. Results: Performance 85, Accessibility 97, Best Practices 100, SEO 91. FCP 3.3s (slow 4G sim), TBT 30ms, CLS 0. Performance improvements deferred to Phase 1.8.
 - [ ] Optional: connect a custom domain if one has been purchased. Configure DNS, verify SSL certificate.
 - [x] Commit and push any post-deploy config — ✅ Completed: 22 Feb 2026, 19:00 (multiple commits: CSP fix, static GeoJSON import, repaint fix)
 
@@ -408,14 +408,14 @@ Everything we build serves this. Every goal, every phase, every task is measured
 
 **Tasks:**
 
-- [ ] Audit and remove the nested `supabase/supabase/` directory (legacy duplicate from early setup — functions, migrations, seeds duplicated at wrong path)
-- [ ] Verify `supabase/functions/register/index.ts` is the canonical Edge Function location
-- [ ] Audit `public/icons/` — there's a double-nested `icons/icons/` path referenced in manifest.json and service worker. Flatten if needed or verify it's correct.
-- [ ] Remove any `.DS_Store` files from the repo
-- [ ] Review all migration files (001–009) are correctly numbered and contain accurate header comments
-- [ ] Verify `.gitignore` covers all necessary exclusions (node_modules, .env.local, .DS_Store, dist, etc.)
-- [ ] Run `npx tsc --noEmit` and `npm run build` — verify zero errors, zero warnings
-- [ ] Audit `package.json`: update name from `restore-britain-temp` to `restore-britain-app`
+- [x] Audit and remove the nested `supabase/supabase/` directory (legacy duplicate from early setup — functions, migrations, seeds duplicated at wrong path) — ✅ Completed: 22 Feb 2026, 19:25. Confirmed identical to canonical. Moved to `rubbish/supabase-nested-duplicate`.
+- [x] Verify `supabase/functions/register/index.ts` is the canonical Edge Function location — ✅ Completed: 22 Feb 2026, 19:25. Confirmed canonical; nested duplicate was byte-identical.
+- [x] Audit `public/icons/` — there's a double-nested `icons/icons/` path referenced in manifest.json and service worker. Flatten if needed or verify it's correct. — ✅ Completed: 22 Feb 2026, 19:25. Flattened: icons now at `/icons/icon-192.png` and `/icons/icon-512.png`. Updated manifest.json and sw.js. Old nested dir moved to `rubbish/icons-nested-duplicate`.
+- [x] Remove any `.DS_Store` files from the repo — ✅ Completed: 22 Feb 2026, 19:25. Moved `supabase/.DS_Store` to `rubbish/`. `.gitignore` already excludes `.DS_Store`.
+- [x] Review all migration files (001–009) are correctly numbered and contain accurate header comments — ✅ Completed: 22 Feb 2026, 19:25. All 9 migrations correctly numbered with clear descriptive headers.
+- [x] Verify `.gitignore` covers all necessary exclusions (node_modules, .env.local, .DS_Store, dist, etc.) — ✅ Completed: 22 Feb 2026, 19:25. Added `rubbish/` exclusion. All other entries already correct.
+- [x] Run `npx tsc --noEmit` and `npm run build` — verify zero errors, zero warnings — ✅ Completed: 22 Feb 2026, 19:25. TypeScript compiles clean, zero errors.
+- [x] Audit `package.json`: update name from `restore-britain-temp` to `restore-britain-app` — ✅ Completed: 22 Feb 2026, 19:25.
 - [ ] Commit and push: `git commit -m "Phase 1.7.2: Project folder cleanup and organisation"`
 
 ---
@@ -455,6 +455,13 @@ Everything we build serves this. Every goal, every phase, every task is measured
 - [ ] Apply brand colours to UI elements: buttons, headers, navigation bar, links, input fields, cards
 - [ ] Apply brand colours to the map: update MapLibre style using `theme.json` map colour values for region fills, borders, hover states, selection states, sea and land backgrounds
 - [ ] Ensure the bottom sheet (region detail view) uses brand colours and fonts consistently
+
+*Lighthouse performance improvements (from Phase 1.7 audit — Performance 85, target 90+):*
+- [ ] Add `<main>` landmark to all page layouts (Accessibility: "Document does not have a main landmark" — costs 3 points)
+- [ ] Lazy-load MapLibre GL only on the map page (code-splitting) — saves ~324 KiB unused JS on login/boards pages, biggest FCP win
+- [ ] Eliminate render-blocking CSS — inline critical CSS or defer non-critical styles (est. 300ms FCP saving)
+- [ ] Reduce unused CSS (~14 KiB)
+- [ ] Re-run Lighthouse after fixes — target: Performance 90+, Accessibility 100
 
 *Verification:*
 - [ ] Visual review: screenshot every screen on a phone (login, registration, map, region detail, profile, profile edit) and verify brand consistency

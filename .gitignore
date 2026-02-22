@@ -28,3 +28,6 @@ supabase/.temp/
 
 # Artefact from folder mounting — not part of the project
 brand/mnt/
+
+# Temporary cleanup folder — files awaiting manual deletion
+rubbish/

@@ -18,8 +18,8 @@ const CACHE_VERSION = 'rb-v4';
 const PRECACHE_URLS = [
   '/',
   '/favicon.png',
-  '/icons/icons/icon-192.png',
-  '/icons/icons/icon-512.png',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
   '/icons/rb-logo-40.png',
   '/data/uk-regions.geojson',
 ];
