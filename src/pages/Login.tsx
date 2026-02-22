@@ -3,12 +3,17 @@ import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 /**
- * Login page — email and password only. Uses Supabase Auth
- * signInWithPassword directly (no Edge Function needed).
+ * Login page — accepts email OR username plus password.
+ *
+ * Since Supabase Auth requires an email for signInWithPassword,
+ * we detect whether the input looks like an email (contains @)
+ * or a username. For usernames, we call the resolve_username_to_email
+ * RPC function (SECURITY DEFINER, bypasses RLS) to get the email,
+ * then sign in with that.
  */
 export function Login() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -17,21 +22,44 @@ export function Login() {
     e.preventDefault();
     setError('');
 
-    if (!email.trim() || !password) {
-      setError('Email and password are required.');
+    const trimmed = identifier.trim();
+    if (!trimmed || !password) {
+      setError('Email/username and password are required.');
       return;
     }
 
     setSubmitting(true);
 
+    let email: string;
+
+    if (trimmed.includes('@')) {
+      // Input looks like an email — use directly
+      email = trimmed.toLowerCase();
+    } else {
+      // Input is a username — resolve to email via RPC
+      const { data, error: rpcError } = await supabase.rpc(
+        'resolve_username_to_email',
+        { lookup_username: trimmed }
+      );
+
+      if (rpcError || !data) {
+        // Generic error — don't reveal whether the username exists
+        setError('Invalid username or password.');
+        setSubmitting(false);
+        return;
+      }
+
+      email = data as string;
+    }
+
     const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
+      email,
       password,
     });
 
     if (signInError) {
-      // Generic error — don't reveal whether the email exists
-      setError('Invalid email or password.');
+      // Generic error — don't reveal whether the email/username exists
+      setError('Invalid credentials.');
       setSubmitting(false);
       return;
     }
@@ -51,14 +79,14 @@ export function Login() {
           {error && <div style={styles.error}>{error}</div>}
 
           <label style={styles.label}>
-            Email
+            Email or Username
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              type="text"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              placeholder="you@example.com or your_username"
               style={styles.input}
-              autoComplete="email"
+              autoComplete="username"
               disabled={submitting}
             />
           </label>
@@ -139,7 +167,8 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.625rem 0.75rem',
     border: '1px solid var(--colour-border)',
     borderRadius: 'var(--radius)',
-    fontSize: '0.875rem',
+    /* Must be >= 16px (1rem) to prevent iOS Safari auto-zoom on focus */
+    fontSize: '1rem',
     backgroundColor: 'var(--colour-input-bg)',
     outline: 'none',
   },

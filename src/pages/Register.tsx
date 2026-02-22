@@ -253,7 +253,8 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.625rem 0.75rem',
     border: '1px solid var(--colour-border)',
     borderRadius: 'var(--radius)',
-    fontSize: '0.875rem',
+    /* Must be >= 16px (1rem) to prevent iOS Safari auto-zoom on focus */
+    fontSize: '1rem',
     backgroundColor: 'var(--colour-input-bg)',
     outline: 'none',
   },

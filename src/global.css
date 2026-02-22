@@ -957,7 +957,8 @@ a:hover {
   padding: 0.75rem;
   border: 1px solid var(--colour-border);
   border-radius: var(--radius);
-  font-size: 0.9375rem;
+  /* >= 16px prevents iOS Safari auto-zoom on focus */
+  font-size: 1rem;
   color: var(--colour-text);
   background: var(--colour-input-bg);
   resize: none;
@@ -1941,7 +1942,8 @@ a:hover {
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--colour-border);
   border-radius: 1.25rem;
-  font-size: 0.875rem;
+  /* >= 16px prevents iOS Safari auto-zoom on focus */
+  font-size: 1rem;
   font-family: inherit;
   resize: none;
   min-height: 2.25rem;
