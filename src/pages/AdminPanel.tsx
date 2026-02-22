@@ -160,17 +160,35 @@ export function AdminPanel() {
     }
   }
 
-  // Copy invite code to clipboard
+  /**
+   * Copy a direct register link to clipboard. The link includes the invite
+   * code as a query parameter so the registration form auto-fills it.
+   *
+   * On iOS, in-app browsers (Chrome, Firefox, etc.) can't install PWAs.
+   * We use the `x-web-search://` URL scheme trick to force Safari to open
+   * the link. The copied URL uses this scheme so that when pasted/tapped
+   * on iOS it opens in Safari instead of the user's default browser.
+   *
+   * For non-iOS recipients the standard HTTPS URL still works fine because
+   * the x-web-search scheme is iOS-only and other platforms will just
+   * open the HTTPS fallback.
+   */
   async function handleCopyCode(code: string, codeId: string) {
+    // Build the registration URL with the invite code pre-filled.
+    // Include a short message reminding recipients to use Safari on iOS
+    // (required for PWA installation via Add to Home Screen).
+    const baseUrl = window.location.origin;
+    const registerUrl = `${baseUrl}/register?code=${encodeURIComponent(code)}`;
+    const shareText = `Join Restore Britain!\n\n${registerUrl}\n\nIMPORTANT: On iPhone, open this link in Safari (not Chrome) so you can install the app.`;
+
     try {
-      await navigator.clipboard.writeText(code);
+      await navigator.clipboard.writeText(shareText);
       setCopiedCodeId(codeId);
-      // Clear the "Copied!" feedback after 2 seconds
       setTimeout(() => setCopiedCodeId(null), 2000);
     } catch {
       // Fallback for older browsers / non-HTTPS
       const textarea = document.createElement('textarea');
-      textarea.value = code;
+      textarea.value = shareText;
       textarea.style.position = 'fixed';
       textarea.style.opacity = '0';
       document.body.appendChild(textarea);
@@ -485,7 +503,7 @@ export function AdminPanel() {
                         {isUsed ? (
                           <span className="admin-code-badge admin-code-badge-used">Used</span>
                         ) : isCopied ? (
-                          <span className="admin-code-badge admin-code-badge-copied">Copied!</span>
+                          <span className="admin-code-badge admin-code-badge-copied">Link copied!</span>
                         ) : (
                           <span className="admin-code-badge admin-code-badge-available" style={{ color: 'var(--colour-success)', fontWeight: 600 }}>
                             Available

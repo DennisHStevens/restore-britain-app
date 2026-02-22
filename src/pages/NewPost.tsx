@@ -108,7 +108,7 @@ export function NewPost() {
           Cancel
         </button>
         <span className="new-post-board-name">
-          {board ? `gb/${board.slug}` : '…'}
+          {board ? board.name : '…'}
         </span>
         <button
           className="new-post-submit"

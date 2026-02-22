@@ -13,7 +13,7 @@ import { useAuth } from '../../hooks/useAuth';
  * │     Scrollable Content   │  Children rendered here
  * │                          │
  * ├─────────────────────────┤
- * │      Bottom Nav Bar      │  Fixed bottom — Map | Boards
+ * │      Bottom Nav Bar      │  Fixed bottom — Map | Quests | Boards
  * └─────────────────────────┘
  *
  * All layout and safe-area styles live in global.css (class-based),
@@ -34,10 +34,13 @@ export function AppShell({ children }: AppShellProps) {
     ? 'boards'
     : location.pathname === '/profile'
       ? 'profile'
-      : 'map';
+      : location.pathname === '/quests'
+        ? 'quests'
+        : 'map';
 
-  function handleTabClick(tab: 'map' | 'boards' | 'profile') {
+  function handleTabClick(tab: 'map' | 'quests' | 'boards' | 'profile') {
     if (tab === 'map') navigate('/');
+    if (tab === 'quests') navigate('/quests');
     if (tab === 'boards') navigate('/boards');
     if (tab === 'profile') navigate('/profile');
   }
@@ -48,7 +51,10 @@ export function AppShell({ children }: AppShellProps) {
       <header className="app-header">
         <div className="app-header-content">
           <img src="/icons/rb-logo-40.png" alt="RB" className="app-header-logo" />
-          <span className="app-header-title">Restore Britain</span>
+          <div className="app-header-title-group">
+            <span className="app-header-title">Restore Britain</span>
+            <span className="app-header-version">Pre-Alpha v0.1</span>
+          </div>
           {/* Admin icon — visible to admin+ roles only */}
           {isAtLeast('admin') && (
             <button
@@ -81,7 +87,7 @@ export function AppShell({ children }: AppShellProps) {
         {children}
       </main>
 
-      {/* Bottom navigation — 2 tabs: Map | Boards */}
+      {/* Bottom navigation — 3 tabs: Map | Quests | Boards */}
       <nav className="app-nav">
         <button
           onClick={() => handleTabClick('map')}
@@ -94,6 +100,19 @@ export function AppShell({ children }: AppShellProps) {
             <line x1="16" y1="6" x2="16" y2="22" />
           </svg>
           <span>Map</span>
+        </button>
+
+        <button
+          onClick={() => handleTabClick('quests')}
+          className={`app-nav-button${activeTab === 'quests' ? ' active' : ''}`}
+        >
+          {/* Quests icon — target/crosshair */}
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <circle cx="12" cy="12" r="6" />
+            <circle cx="12" cy="12" r="2" />
+          </svg>
+          <span>Quests</span>
         </button>
 
         <button

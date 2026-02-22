@@ -70,6 +70,7 @@ export function Login() {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
+        <img src="/icons/rb-logo-40.png" alt="" style={styles.logo} />
         <h1 style={styles.title}>Restore Britain</h1>
         <p style={styles.subtitle}>
           Sign in to your account.
@@ -140,9 +141,18 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 'var(--radius)',
     padding: '2rem',
     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    textAlign: 'center' as const,
+  },
+  logo: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    marginBottom: '1rem',
+    objectFit: 'contain' as const,
   },
   title: {
     fontSize: '1.5rem',
+    fontFamily: 'var(--font-heading)',
     fontWeight: 700,
     marginBottom: '0.25rem',
   },
@@ -175,7 +185,7 @@ const styles: Record<string, React.CSSProperties> = {
   button: {
     padding: '0.75rem',
     backgroundColor: 'var(--colour-primary)',
-    color: '#fff',
+    color: 'var(--colour-text-inverse)',
     border: 'none',
     borderRadius: 'var(--radius)',
     fontSize: '0.875rem',

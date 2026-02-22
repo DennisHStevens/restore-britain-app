@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 /**
@@ -7,12 +7,21 @@ import { supabase } from '../lib/supabase';
  * and optional X handle. Sends everything to the atomic `register` Edge
  * Function in a single request (see DEC-014).
  *
+ * The invite code can be pre-filled via a `?code=XXXX` query parameter.
+ * This is used when admins share direct registration links from the
+ * admin panel.
+ *
  * Username rules: 3-20 characters, alphanumeric + underscores only.
  * Uniqueness is case-insensitive (enforced by DB index).
  */
 export function Register() {
   const navigate = useNavigate();
-  const [inviteCode, setInviteCode] = useState('');
+  const [searchParams] = useSearchParams();
+
+  // Pre-fill invite code from URL ?code= parameter (admin-shared links)
+  const [inviteCode, setInviteCode] = useState(
+    () => searchParams.get('code')?.toUpperCase() || ''
+  );
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
@@ -104,6 +113,7 @@ export function Register() {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
+        <img src="/icons/rb-logo-40.png" alt="" style={styles.logo} />
         <h1 style={styles.title}>Join Restore Britain</h1>
         <p style={styles.subtitle}>
           Enter your invite code to create an account.
@@ -226,9 +236,18 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 'var(--radius)',
     padding: '2rem',
     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    textAlign: 'center' as const,
+  },
+  logo: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    marginBottom: '1rem',
+    objectFit: 'contain' as const,
   },
   title: {
     fontSize: '1.5rem',
+    fontFamily: 'var(--font-heading)',
     fontWeight: 700,
     marginBottom: '0.25rem',
   },
@@ -261,7 +280,7 @@ const styles: Record<string, React.CSSProperties> = {
   button: {
     padding: '0.75rem',
     backgroundColor: 'var(--colour-primary)',
-    color: '#fff',
+    color: 'var(--colour-text-inverse)',
     border: 'none',
     borderRadius: 'var(--radius)',
     fontSize: '0.875rem',

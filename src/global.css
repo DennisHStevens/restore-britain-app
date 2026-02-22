@@ -163,11 +163,27 @@ a:hover {
   object-fit: contain;
 }
 
+/* Group the title and version label vertically so the version
+ * sits directly below the app name without affecting the header height */
+.app-header-title-group {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
 .app-header-title {
   font-family: var(--font-heading);
   font-size: 1.125rem;
   font-weight: 600;
   letter-spacing: -0.01em;
+}
+
+.app-header-version {
+  font-size: 0.5625rem;
+  font-weight: 400;
+  color: var(--colour-text-muted);
+  letter-spacing: 0.04em;
+  opacity: 0.7;
 }
 
 /* Profile button sits at the far right of the header bar */
@@ -331,8 +347,10 @@ a:hover {
    * 0.44s matches Apple's UIKit modal presentation duration.
    */
   transition: transform 0.44s cubic-bezier(0.32, 0.72, 0, 1);
-  /* 60% of viewport — enough to show detail without hiding the map entirely */
-  max-height: 60vh;
+  /* 70% of viewport — enough to show region name, stats, AND the View Board
+   * button without it being clipped by the bottom nav bar. Previously 60vh
+   * which cut off the button on shorter viewports. */
+  max-height: 70vh;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -357,7 +375,13 @@ a:hover {
 }
 
 .bottom-sheet-content {
-  padding: 0.5rem 1.25rem 1.5rem;
+  /*
+   * Extra bottom padding ensures the "View Board" button isn't
+   * clipped by the bottom nav bar. The sheet sits inside .app-content
+   * which ends at the nav bar, but the sheet's max-height (60vh) can
+   * push content below the visible area on shorter viewports.
+   */
+  padding: 0.5rem 1.25rem 2.5rem;
 }
 
 .bottom-sheet-loading {
@@ -1955,4 +1979,42 @@ a:hover {
 
 .user-profile-field-link:hover {
   text-decoration: underline;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+ * Quests — Coming Soon Placeholder
+ * ═══════════════════════════════════════════════════════════════ */
+
+.quests-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 2rem;
+}
+
+.quests-coming-soon {
+  text-align: center;
+  max-width: 280px;
+}
+
+.quests-coming-soon-icon {
+  color: var(--colour-text-muted);
+  opacity: 0.4;
+  margin-bottom: 1rem;
+}
+
+.quests-coming-soon-title {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--colour-text);
+  margin-bottom: 0.5rem;
+}
+
+.quests-coming-soon-text {
+  font-size: 0.875rem;
+  color: var(--colour-text-muted);
+  line-height: 1.5;
 }
