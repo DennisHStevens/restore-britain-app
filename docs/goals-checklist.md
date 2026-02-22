@@ -475,6 +475,10 @@ Everything we build serves this. Every goal, every phase, every task is measured
 - [x] Create `delete-member` Edge Function with server-side auth cascade (DEC-044) — ✅ Completed: 22 Feb 2026, 21:30
 - [x] Add delete member button to AdminPanel for super admins — ✅ Completed: 22 Feb 2026, 21:30
 - [x] Deploy `delete-member` Edge Function to Supabase, disable JWT gateway verification — ✅ Completed: 22 Feb 2026, 21:45
+- [x] Update `delete-member` Edge Function with comprehensive FK cascade cleanup (votes, comments, posts, invite codes) — ✅ Completed: 22 Feb 2026, 22:00
+- [x] Fix iOS Safari auto-zoom: bump all input font-sizes to >= 16px (1rem) in Register.tsx, Login.tsx, global.css — ✅ Completed: 22 Feb 2026, 22:30
+- [x] Enable login with email OR username (DEC-045): `resolve_username_to_email()` SECURITY DEFINER RPC + Login.tsx detection — ✅ Completed: 22 Feb 2026, 23:00
+- [x] Run migration 009 (username login RPC) in Supabase — ✅ Completed: 22 Feb 2026, 23:00
 
 ---
 

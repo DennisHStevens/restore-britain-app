@@ -23,6 +23,16 @@ Each entry follows this structure:
 
 ## Active Decisions
 
+### DEC-045: Login with email OR username via SECURITY DEFINER RPC
+**Date:** 22 Feb 2026
+**Context:** Members requested the ability to log in with their username instead of their email. Supabase Auth's `signInWithPassword` only accepts email, and RLS blocks unauthenticated users from querying the profiles table — so the client can't resolve username → email before signing in.
+**Decision:** Created a `resolve_username_to_email()` Postgres function with `SECURITY DEFINER` that bypasses RLS to look up the email by username (case-insensitive). The Login.tsx form detects whether the input contains `@` — if yes, it's treated as email; otherwise it calls the RPC to resolve the username first. The function is granted to both `anon` and `authenticated` roles. Error messages are generic ("Invalid credentials") to avoid leaking whether a username exists.
+**Alternatives:** (1) Disable RLS on profiles for anon reads (rejected — exposes all profile data). (2) Create an Edge Function for login (rejected — unnecessary overhead for a simple lookup). (3) Store username in auth.users metadata (rejected — can't query by metadata in signInWithPassword).
+**Impact:** Users can now log in with either their email or username. Migration 009 adds the RPC function.
+**Status:** Active
+
+---
+
 ### DEC-044: Delete member Edge Function with server-side auth
 **Date:** 22 Feb 2026
 **Context:** Super admins need the ability to remove members from the platform. This requires deleting the auth user (Supabase Admin API), the profile row, and freeing up the member's invite code — all privileged operations that cannot be done from the client.
