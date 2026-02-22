@@ -469,6 +469,13 @@ Everything we build serves this. Every goal, every phase, every task is measured
 - [ ] Verify no hardcoded colour values exist in any component file (search the codebase for hex codes)
 - [ ] Commit and push: `git commit -m "Phase 1.8: Brand assets integrated, theme pipeline live"`
 
+*Bug fixes (post-brand-integration):*
+- [x] Fix registration 401 error: disabled "Verify JWT with legacy secret" on register Edge Function (DEC-043) — ✅ Completed: 22 Feb 2026, 20:30
+- [x] Tested registration end-to-end on live site (new user created, redirected to onboarding) — ✅ Completed: 22 Feb 2026, 20:30
+- [x] Create `delete-member` Edge Function with server-side auth cascade (DEC-044) — ✅ Completed: 22 Feb 2026, 21:30
+- [x] Add delete member button to AdminPanel for super admins — ✅ Completed: 22 Feb 2026, 21:30
+- [x] Deploy `delete-member` Edge Function to Supabase, disable JWT gateway verification — ✅ Completed: 22 Feb 2026, 21:45
+
 ---
 
 ### Phase 1.9 — Onboarding First 10 Members

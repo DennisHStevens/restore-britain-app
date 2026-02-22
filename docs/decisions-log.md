@@ -23,6 +23,26 @@ Each entry follows this structure:
 
 ## Active Decisions
 
+### DEC-044: Delete member Edge Function with server-side auth
+**Date:** 22 Feb 2026
+**Context:** Super admins need the ability to remove members from the platform. This requires deleting the auth user (Supabase Admin API), the profile row, and freeing up the member's invite code — all privileged operations that cannot be done from the client.
+**Decision:** Created a `delete-member` Edge Function that uses the service_role key. The function extracts the caller's JWT from the Authorization header, verifies they are a super_admin via the profiles table, then cascades: reset invite codes → delete profile → delete auth user. JWT gateway verification is disabled (same pattern as DEC-043) because the function handles its own auth internally.
+**Alternatives:** Client-side deletion via RLS policies (rejected — RLS can't delete auth users, only profile rows). Direct Admin API calls from client (rejected — would expose service_role key).
+**Impact:** Super admins can now delete non-super-admin members from the admin panel. Freed invite codes become available for reuse.
+**Status:** Active
+
+---
+
+### DEC-043: Disable JWT verification on register Edge Function
+**Date:** 22 Feb 2026
+**Context:** Registration was failing with 401 errors. All invocations of the `register` Edge Function returned 401, but no logs appeared in the function's log viewer — meaning Supabase's gateway was rejecting requests before the function code even executed.
+**Decision:** Disabled "Verify JWT with legacy secret" toggle on the register Edge Function in the Supabase dashboard. The function handles its own authorisation internally (service_role key, invite code validation), so gateway-level JWT verification is unnecessary and actively harmful for an unauthenticated registration endpoint.
+**Alternatives:** Pass a valid JWT from the client (impossible — users don't have accounts yet), deploy with `--no-verify-jwt` flag (same effect but via CLI).
+**Impact:** Registration now works correctly. The function's own auth logic (invite code validation, service_role key) provides the security boundary.
+**Status:** Active
+
+---
+
 ### DEC-042: Brand theme integration from official site
 **Date:** 22 Feb 2026
 **Context:** We needed official brand assets (colours, fonts, logo) but didn't have a design file. The official Restore Britain site (restorebritain.org.uk) was scraped to extract the brand palette.

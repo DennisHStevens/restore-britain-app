@@ -59,6 +59,9 @@ export function AdminPanel() {
   // Generate button state
   const [generating, setGenerating] = useState(false);
 
+  // Delete member state: tracks which member ID is currently being deleted
+  const [deletingMemberId, setDeletingMemberId] = useState<string | null>(null);
+
   // Guard: only admin+ can access this page
   const hasAccess = isAtLeast('admin');
 
@@ -212,6 +215,58 @@ export function AdminPanel() {
     }
   }
 
+  // Delete a member — super_admin only, via Edge Function
+  async function handleDeleteMember(userId: string, username: string) {
+    if (!isAtLeast('super_admin')) {
+      alert('Only super admins can delete members.');
+      return;
+    }
+
+    if (userId === profile?.id) {
+      alert('You cannot delete your own account.');
+      return;
+    }
+
+    // Confirmation prompt — two-step to prevent accidents
+    const confirmed = window.confirm(
+      `Are you sure you want to permanently delete @${username}?\n\nThis will:\n• Remove their account and profile\n• Free up their invite code for reuse\n\nThis action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    setDeletingMemberId(userId);
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-member', {
+        body: { user_id: userId },
+      });
+
+      if (error) throw error;
+
+      // Check for application-level errors in the response
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      // Remove from local state
+      setMembers((prev) => prev.filter((m) => m.id !== userId));
+
+      // Also refresh invite codes since one may have been freed up
+      const { data: codeData } = await supabase
+        .from('invite_codes')
+        .select('id, code, created_by, used_by, used_at, created_at, used_by_profile:profiles!invite_codes_used_by_fkey(username, email)')
+        .order('created_at', { ascending: false });
+
+      if (codeData) {
+        setInviteCodes(codeData as unknown as InviteCode[]);
+      }
+    } catch (err: any) {
+      console.error('[AdminPanel] Delete member failed:', err);
+      alert(`Failed to delete member: ${err.message}`);
+    } finally {
+      setDeletingMemberId(null);
+    }
+  }
+
   // Redirect non-admins
   if (!hasAccess) {
     return (
@@ -305,20 +360,32 @@ export function AdminPanel() {
                     </td>
                     {isSuperAdmin && (
                       <td>
-                        {member.role !== 'super_admin' && member.id !== profile?.id && (
-                          <select
-                            className="admin-role-select"
-                            value={member.role}
-                            onChange={(e) => handleRoleChange(member.id, e.target.value as Role)}
-                          >
-                            <option value="member">member</option>
-                            <option value="commander">commander</option>
-                            <option value="admin">admin</option>
-                          </select>
-                        )}
-                        {member.role === 'super_admin' && (
-                          <span className="admin-permanent-label">permanent</span>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          {member.role !== 'super_admin' && member.id !== profile?.id && (
+                            <>
+                              <select
+                                className="admin-role-select"
+                                value={member.role}
+                                onChange={(e) => handleRoleChange(member.id, e.target.value as Role)}
+                              >
+                                <option value="member">member</option>
+                                <option value="commander">commander</option>
+                                <option value="admin">admin</option>
+                              </select>
+                              <button
+                                className="admin-delete-btn"
+                                onClick={() => handleDeleteMember(member.id, member.username)}
+                                disabled={deletingMemberId === member.id}
+                                title={`Delete @${member.username}`}
+                              >
+                                {deletingMemberId === member.id ? '…' : '×'}
+                              </button>
+                            </>
+                          )}
+                          {member.role === 'super_admin' && (
+                            <span className="admin-permanent-label">permanent</span>
+                          )}
+                        </div>
                       </td>
                     )}
                   </tr>
