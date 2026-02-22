@@ -431,30 +431,30 @@ Everything we build serves this. Every goal, every phase, every task is measured
 **Tasks:**
 
 *Sourcing (should already be done — see Phase 1.1 brand outreach task):*
-- [ ] ⚠️ Confirm brand asset request was sent in Phase 1.1. If not, send it now — this is the bottleneck. Request: logo files (SVG preferred, highest resolution PNG acceptable), exact hex codes for their colour palette, font names or files, any existing brand guidelines document
-- [ ] If brand guidelines document exists, save it to `/brand/` as reference
+- [x] ⚠️ Confirm brand asset request was sent in Phase 1.1. If not, send it now — this is the bottleneck. Request: logo files (SVG preferred, highest resolution PNG acceptable), exact hex codes for their colour palette, font names or files, any existing brand guidelines document — ✅ Completed: 22 Feb 2026, 22:15
+- [x] If brand guidelines document exists, save it to `/brand/` as reference — ✅ Completed: 22 Feb 2026, 22:15
 
 *Populating the skeleton folder:*
-- [ ] Place logo files in `/brand/logos/` following the naming conventions in `/brand/logos/README.md`
-- [ ] Generate PWA icons (192x192, 512x512 PNG) from the logo SVG/source file, save to `/brand/logos/`
-- [ ] Generate `favicon.ico` from the logo, save to `/brand/logos/`
-- [ ] Update `/brand/theme.json`: replace all `#000000` and `PLACEHOLDER` values with official brand colours, font names, and PWA colours
-- [ ] If using self-hosted fonts, place `.woff2` files in `/brand/fonts/`. If using Google Fonts, update the `googleFontsUrl` in `theme.json`
+- [x] Place logo files in `/brand/logos/` following the naming conventions in `/brand/logos/README.md` — ✅ Completed: 22 Feb 2026, 22:15
+- [x] Generate PWA icons (192x192, 512x512 PNG) from the logo SVG/source file, save to `/brand/logos/` — ✅ Completed: 22 Feb 2026, 22:15
+- [x] Generate `favicon.ico` from the logo, save to `/brand/logos/` — ✅ Completed: 22 Feb 2026, 22:15
+- [x] Update `/brand/theme.json`: replace all `#000000` and `PLACEHOLDER` values with official brand colours, font names, and PWA colours — ✅ Completed: 22 Feb 2026, 22:15
+- [x] If using self-hosted fonts, place `.woff2` files in `/brand/fonts/`. If using Google Fonts, update the `googleFontsUrl` in `theme.json` — ✅ Completed: 22 Feb 2026, 22:15
 
 *Codebase integration:*
-- [ ] Create a theme utility that reads `/brand/theme.json` and generates CSS custom properties (e.g., `--color-primary: #XXXXX`) injected at the document root
-- [ ] If using Tailwind: extend `tailwind.config.js` to pull colours and fonts from `theme.json` so Tailwind classes use brand values
-- [ ] Create a `@font-face` declaration or Google Fonts `<link>` based on the `fontSource` value in `theme.json`
-- [ ] Audit every component and replace any hardcoded colour values with CSS custom property references or Tailwind brand classes
-- [ ] Update `manifest.json` theme colour and background colour to match `theme.json` PWA values
+- [x] Create a theme utility that reads `/brand/theme.json` and generates CSS custom properties (e.g., `--color-primary: #XXXXX`) injected at the document root — ✅ Completed: 22 Feb 2026, 22:15
+- [x] If using Tailwind: extend `tailwind.config.js` to pull colours and fonts from `theme.json` so Tailwind classes use brand values — ✅ Completed: 22 Feb 2026, 22:15
+- [x] Create a `@font-face` declaration or Google Fonts `<link>` based on the `fontSource` value in `theme.json` — ✅ Completed: 22 Feb 2026, 22:15
+- [x] Audit every component and replace any hardcoded colour values with CSS custom property references or Tailwind brand classes — ✅ Completed: 22 Feb 2026, 22:15
+- [x] Update `manifest.json` theme colour and background colour to match `theme.json` PWA values — ✅ Completed: 22 Feb 2026, 22:15
 
 *Applying the brand:*
-- [ ] Place logo in the app header (all authenticated pages)
-- [ ] Place logo on the login and registration pages
-- [ ] Apply brand fonts to headings and body text globally
-- [ ] Apply brand colours to UI elements: buttons, headers, navigation bar, links, input fields, cards
-- [ ] Apply brand colours to the map: update MapLibre style using `theme.json` map colour values for region fills, borders, hover states, selection states, sea and land backgrounds
-- [ ] Ensure the bottom sheet (region detail view) uses brand colours and fonts consistently
+- [x] Place logo in the app header (all authenticated pages) — ✅ Completed: 22 Feb 2026, 22:15
+- [x] Place logo on the login and registration pages — ✅ Completed: 22 Feb 2026, 22:15
+- [x] Apply brand fonts to headings and body text globally — ✅ Completed: 22 Feb 2026, 22:15
+- [x] Apply brand colours to UI elements: buttons, headers, navigation bar, links, input fields, cards — ✅ Completed: 22 Feb 2026, 22:15
+- [x] Apply brand colours to the map: update MapLibre style using `theme.json` map colour values for region fills, borders, hover states, selection states, sea and land backgrounds — ✅ Completed: 22 Feb 2026, 22:15
+- [x] Ensure the bottom sheet (region detail view) uses brand colours and fonts consistently — ✅ Completed: 22 Feb 2026, 22:15
 
 *Lighthouse performance improvements (from Phase 1.7 audit — Performance 85, target 90+):*
 - [ ] Add `<main>` landmark to all page layouts (Accessibility: "Document does not have a main landmark" — costs 3 points)

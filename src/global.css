@@ -1,7 +1,7 @@
 /* Global styles — Restore Britain Platform
- * Brand colour: Navy blue (#051e40) extracted from the RB logo.
- * This is a placeholder logo until official brand assets arrive,
- * but the navy is our primary colour for now.
+ * Brand palette extracted from restorebritain.org.uk (Feb 2026).
+ * Colours, fonts, and spacing defined in brand/theme.json and
+ * exposed as CSS custom properties below.
  */
 
 *,
@@ -13,19 +13,47 @@
 }
 
 :root {
-  /* Brand navy blue — extracted from RESTORE_Britain.png logo */
-  --colour-bg: #f5f5f5;
-  --colour-surface: #ffffff;
-  --colour-text: #1a1a1a;
-  --colour-text-muted: #6b7280;
+  /* ── Brand colours (from brand/theme.json) ──────────────────── */
   --colour-primary: #051e40;
   --colour-primary-hover: #0a2d5c;
   --colour-primary-light: #0d3a73;
-  --colour-error: #dc2626;
+  --colour-primary-dark: #051b3a;
+  --colour-secondary: #6da8d6;
+  --colour-secondary-light: #8dbde3;
+  --colour-secondary-dark: #4a8fc4;
+  --colour-accent: #006184;
+
+  /* ── Surfaces & backgrounds ─────────────────────────────────── */
+  --colour-bg: #f5f5f5;
+  --colour-bg-alt: #eef2f6;
+  --colour-surface: #ffffff;
+  --colour-input-bg: #f9fafb;
+
+  /* ── Text ────────────────────────────────────────────────────── */
+  --colour-text: #051e40;
+  --colour-text-light: #4a5568;
+  --colour-text-muted: #a8a8a8;
+  --colour-text-inverse: #ffffff;
+
+  /* ── Semantic ────────────────────────────────────────────────── */
+  --colour-success: #22c55e;
+  --colour-warning: #f59e0b;
+  --colour-error: #ef4444;
   --colour-error-bg: #fef2f2;
-  --colour-border: #d1d5db;
-  --colour-input-bg: #ffffff;
-  --radius: 8px;
+  --colour-border: #e5e5e5;
+
+  /* ── Map ──────────────────────────────────────────────────────── */
+  --colour-map-sea: #dbe9f4;
+  --colour-map-border: #ffffff;
+
+  /* ── Typography ──────────────────────────────────────────────── */
+  --font-heading: 'Montserrat', sans-serif;
+  --font-body: 'Lato', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* ── Spacing ─────────────────────────────────────────────────── */
+  --radius: 0.5rem;
+  --radius-lg: 1rem;
   --max-width: 420px;
 }
 
@@ -51,8 +79,7 @@ body {
   min-height: 100%;
   min-height: -webkit-fill-available;
   min-height: 100dvh;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--font-body);
   background-color: var(--colour-primary);
   color: var(--colour-text);
   line-height: 1.5;
@@ -136,6 +163,7 @@ a:hover {
 }
 
 .app-header-title {
+  font-family: var(--font-heading);
   font-size: 1.125rem;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -496,10 +524,10 @@ a:hover {
 /* Pinned board card (national) — subtle highlight */
 .board-card-pinned {
   border-left: 3px solid var(--colour-primary);
-  background: rgba(0, 86, 179, 0.03);
+  background: rgba(5, 30, 64, 0.03);
 }
 .board-card-pinned:active {
-  background: rgba(0, 86, 179, 0.08);
+  background: rgba(5, 30, 64, 0.08);
 }
 .board-card-pin-icon {
   margin-right: 0.35rem;
@@ -692,7 +720,7 @@ a:hover {
 }
 
 .post-card:active {
-  background-color: #f9fafb;
+  background-color: var(--colour-input-bg);
 }
 
 .post-card-pinned {
@@ -1192,8 +1220,8 @@ a:hover {
 }
 
 .post-mod-btn-active {
-  color: #f59e0b;
-  border-color: #f59e0b;
+  color: var(--colour-warning);
+  border-color: var(--colour-warning);
 }
 
 .post-mod-btn-active:hover {
@@ -1202,8 +1230,8 @@ a:hover {
 }
 
 .post-mod-btn-danger:hover {
-  color: #ef4444;
-  border-color: #ef4444;
+  color: var(--colour-error);
+  border-color: var(--colour-error);
 }
 
 /* Lock icon next to post titles */
@@ -1211,7 +1239,7 @@ a:hover {
   display: inline-block;
   vertical-align: middle;
   margin-right: 0.375rem;
-  color: #f59e0b;
+  color: var(--colour-warning);
   flex-shrink: 0;
 }
 
@@ -1223,10 +1251,10 @@ a:hover {
   padding: 0.75rem 1rem;
   margin: 0 1rem 5rem;
   font-size: 0.8125rem;
-  color: #f59e0b;
+  color: var(--colour-warning);
   background: rgba(245, 158, 11, 0.08);
   border: 1px solid rgba(245, 158, 11, 0.2);
-  border-radius: 8px;
+  border-radius: var(--radius);
 }
 
 /* Role badge — small label next to @usernames */
@@ -1245,12 +1273,12 @@ a:hover {
 }
 
 .role-badge-commander {
-  color: #3b82f6;
-  background: rgba(59, 130, 246, 0.12);
+  color: var(--colour-secondary);
+  background: rgba(109, 168, 214, 0.12);
 }
 
 .role-badge-admin {
-  color: #f59e0b;
+  color: var(--colour-warning);
   background: rgba(245, 158, 11, 0.12);
 }
 
@@ -1334,7 +1362,7 @@ a:hover {
 }
 
 .admin-cell-code {
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 0.75rem;
   letter-spacing: 0.05em;
 }
@@ -1355,17 +1383,17 @@ a:hover {
 }
 
 .admin-role-commander {
-  color: #3b82f6;
-  background: rgba(59, 130, 246, 0.12);
+  color: var(--colour-secondary);
+  background: rgba(109, 168, 214, 0.12);
 }
 
 .admin-role-admin {
-  color: #f59e0b;
+  color: var(--colour-warning);
   background: rgba(245, 158, 11, 0.12);
 }
 
 .admin-role-super_admin {
-  color: #ef4444;
+  color: var(--colour-error);
   background: rgba(239, 68, 68, 0.12);
 }
 
@@ -1457,12 +1485,12 @@ a:hover {
 }
 
 .admin-code-card-available:hover {
-  background: rgba(59, 130, 246, 0.06);
-  border-color: rgba(59, 130, 246, 0.3);
+  background: rgba(109, 168, 214, 0.06);
+  border-color: rgba(109, 168, 214, 0.3);
 }
 
 .admin-code-card-available:active {
-  background: rgba(59, 130, 246, 0.12);
+  background: rgba(109, 168, 214, 0.12);
 }
 
 .admin-code-card-used {
@@ -1477,7 +1505,7 @@ a:hover {
 }
 
 .admin-code-card-code {
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 1rem;
   font-weight: 600;
   letter-spacing: 0.1em;
@@ -1508,7 +1536,7 @@ a:hover {
 }
 
 .admin-code-badge-copied {
-  color: #22c55e;
+  color: var(--colour-success);
   background: rgba(34, 197, 94, 0.12);
 }
 
@@ -1584,7 +1612,7 @@ a:hover {
 .admin-error {
   text-align: center;
   padding: 2rem;
-  color: #ef4444;
+  color: var(--colour-error);
 }
 
 /* ─── Comments ─────────────────────────────────────────────── */
@@ -1820,7 +1848,7 @@ a:hover {
   align-items: center;
   justify-content: space-between;
   padding: 0.375rem 0.75rem;
-  background: #f3f4f6;
+  background: var(--colour-bg);
   font-size: 0.75rem;
   color: var(--colour-primary);
 }
@@ -1931,7 +1959,7 @@ a:hover {
   display: block;
   height: 0.875rem;
   width: 60%;
-  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background: linear-gradient(90deg, var(--colour-border) 25%, var(--colour-bg) 50%, var(--colour-border) 75%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.5s infinite;
   border-radius: 4px;
@@ -1943,14 +1971,14 @@ a:hover {
   display: block;
   height: 0.625rem;
   width: 40%;
-  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background: linear-gradient(90deg, var(--colour-border) 25%, var(--colour-bg) 50%, var(--colour-border) 75%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.5s infinite;
   border-radius: 4px;
 }
 
 .skeleton-block {
-  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background: linear-gradient(90deg, var(--colour-border) 25%, var(--colour-bg) 50%, var(--colour-border) 75%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.5s infinite;
   border-radius: 4px;
@@ -2074,7 +2102,7 @@ a:hover {
   gap: 0.25rem;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #059669;
+  color: var(--colour-success);
   margin-bottom: 1rem;
 }
 

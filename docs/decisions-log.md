@@ -23,6 +23,16 @@ Each entry follows this structure:
 
 ## Active Decisions
 
+### DEC-042: Brand theme integration from official site
+**Date:** 22 Feb 2026
+**Context:** We needed official brand assets (colours, fonts, logo) but didn't have a design file. The official Restore Britain site (restorebritain.org.uk) was scraped to extract the brand palette.
+**Decision:** Extract colours, fonts, and logo from the live site and codify them in `brand/theme.json`. All CSS custom properties in global.css now derive from this file. Google Fonts (Montserrat for headings, Lato for body) loaded via `<link>` preconnect pattern. RegionMap.tsx imports theme.json directly for map colours. Per-region fill colours in regionColours.ts kept as separate data-viz palette (pre-blended, not brand colours).
+**Alternatives:** Wait for official brand kit (unknown timeline), use generic system fonts (less distinctive), embed fonts locally (larger bundle).
+**Impact:** `brand/theme.json` now contains all brand values. `global.css` uses CSS custom properties derived from theme. `src/components/map/RegionMap.tsx` imports theme colours. Google Fonts loaded with preconnect hints.
+**Status:** Active
+
+---
+
 ### DEC-041: PWA install guide as onboarding step
 - **Date:** 22 February 2026
 - **Context:** Many users won't know how to add a PWA to their home screen. Dennis requested a tutorial that appears after registration but before region selection, showing device-specific instructions.

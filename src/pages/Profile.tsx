@@ -348,8 +348,8 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: 180,
   },
   successBanner: {
-    backgroundColor: '#ecfdf5',
-    color: '#065f46',
+    backgroundColor: 'var(--colour-bg-alt)',
+    color: 'var(--colour-accent)',
     padding: '0.5rem 1rem',
     borderRadius: 'var(--radius)',
     fontSize: '0.875rem',

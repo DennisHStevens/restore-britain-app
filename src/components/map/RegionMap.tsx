@@ -24,6 +24,13 @@ import {
 } from './regionColours';
 
 /**
+ * Brand theme — imported at build time for map colour constants.
+ * Keeps map colours in sync with brand/theme.json without
+ * hardcoding hex values here.
+ */
+import theme from '../../../brand/theme.json';
+
+/**
  * Static GeoJSON import — bundled at build time by Vite.
  *
  * WHY NOT fetch at runtime? MapLibre's internal blob: web worker cannot
@@ -46,10 +53,10 @@ interface RegionMapProps {
 }
 
 /** Sea colour — soft blue background behind the land polygons */
-const SEA_COLOUR = '#dbe9f4';
+const SEA_COLOUR = theme.colours.map.seaBackground;
 
 /** White borders between regions */
-const BORDER_COLOUR = '#ffffff';
+const BORDER_COLOUR = theme.colours.map.regionBorder;
 const BORDER_WIDTH = 1.5;
 
 const MIN_ZOOM = 4.5;

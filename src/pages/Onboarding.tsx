@@ -343,8 +343,8 @@ const styles: Record<string, React.CSSProperties> = {
   },
   regionPreview: {
     padding: '0.75rem 1rem',
-    backgroundColor: '#ecfdf5',
-    color: '#065f46',
+    backgroundColor: 'var(--colour-bg-alt)',
+    color: 'var(--colour-accent)',
     borderRadius: 'var(--radius)',
     fontSize: '0.9375rem',
     marginBottom: '1.5rem',
@@ -404,7 +404,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   mapConfirmButton: {
     padding: '0.75rem 2rem',
-    backgroundColor: '#16a34a',
+    backgroundColor: 'var(--colour-success)',
     color: '#ffffff',
     border: 'none',
     borderRadius: 'var(--radius)',

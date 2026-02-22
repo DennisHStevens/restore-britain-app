@@ -343,7 +343,7 @@ const styles: Record<string, React.CSSProperties> = {
   installButton: {
     width: '100%',
     padding: '0.875rem',
-    backgroundColor: '#16a34a',
+    backgroundColor: 'var(--colour-success)',
     color: '#ffffff',
     border: 'none',
     borderRadius: 'var(--radius)',
