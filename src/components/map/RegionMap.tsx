@@ -244,6 +244,16 @@ export function RegionMap({ onRegionSelect, onBackgroundClick }: RegionMapProps)
           onBackgroundClick?.();
         }
       });
+
+      /**
+       * Force a repaint after layers are added. MapLibre's render loop can
+       * stall when source data arrives synchronously (from our static import)
+       * after the initial style paint — the frame isn't automatically
+       * scheduled. resize() recalculates the viewport, triggerRepaint()
+       * queues the next render frame.
+       */
+      map.resize();
+      map.triggerRepaint();
     });
 
     mapRef.current = map;
