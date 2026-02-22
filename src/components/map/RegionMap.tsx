@@ -150,11 +150,32 @@ export function RegionMap({ onRegionSelect, onBackgroundClick }: RegionMapProps)
       animate: false,
     });
 
-    map.on('load', () => {
+    map.on('load', async () => {
+      /**
+       * Fetch GeoJSON from the main thread and pass the parsed object to
+       * MapLibre rather than giving it a URL string.
+       *
+       * WHY: When MapLibre is given a URL, it delegates the fetch to its
+       * internal Web Worker (a blob: URL worker). On Cloudflare Pages with
+       * a service worker, the blob-origin worker's fetch requests are not
+       * intercepted by the SW and fail silently — resulting in an empty
+       * source with 0 features. Fetching on the main thread (where the SW
+       * is active) and passing the parsed GeoJSON object directly bypasses
+       * this entirely.
+       */
+      let geojsonData: GeoJSON.FeatureCollection;
+      try {
+        const response = await fetch('/data/uk-regions.geojson');
+        geojsonData = await response.json();
+      } catch (err) {
+        console.error('[RegionMap] Failed to load GeoJSON:', err);
+        return;
+      }
+
       /* Add the merged GeoJSON as a source */
       map.addSource('regions', {
         type: 'geojson',
-        data: '/data/uk-regions.geojson',
+        data: geojsonData,
         /* promoteId tells MapLibre which property to use as the feature ID
          * for feature-state operations (hover, selection, etc.) */
         promoteId: 'id',
