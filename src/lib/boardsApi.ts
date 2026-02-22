@@ -22,6 +22,7 @@ export interface Board {
   scope_id: string | null;
   is_locked: boolean;
   post_count: number;
+  sort_order: number;
   created_at: string;
 }
 
@@ -88,10 +89,13 @@ const PAGE_SIZE = 20;
  * but the query supports any number of boards.
  */
 export async function fetchBoards(): Promise<Board[]> {
+  // Sort by sort_order first (national=0 at top, regional=10 after),
+  // then alphabetically by name within each group
   const { data, error } = await supabase
     .from('boards')
     .select('*')
-    .order('created_at', { ascending: true });
+    .order('sort_order', { ascending: true })
+    .order('name', { ascending: true });
 
   if (error) throw error;
   return data as Board[];

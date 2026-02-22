@@ -23,6 +23,53 @@ Each entry follows this structure:
 
 ## Active Decisions
 
+### DEC-037: Regional boards + national board pinning
+- **Date:** 22 February 2026
+- **Context:** The platform had only gb/national as a discussion board. Dennis requested all 12 regional boards be created and the national board pinned to the top of the board list.
+- **Decision:** Added a `sort_order` integer column to the `boards` table (DEFAULT 100) to allow explicit ordering. National board set to sort_order=0 (always first), regional boards set to sort_order=10. Inserted 12 regional boards (one per region), each linked via `scope_id` to the corresponding region. BoardList UI updated to split boards into pinned national (with pin icon and highlight) and regional sections with a "REGIONAL BOARDS" divider. fetchBoards query updated to sort by `sort_order ASC, name ASC`.
+- **Reasoning:** An explicit `sort_order` column is more robust than sorting by `scope_type` string comparison. It's also extensible — if we ever want to pin a regional board or reorder sections, we just change the integer. The visual distinction (blue left border, pin icon, section divider) makes it immediately obvious which board is the main national one vs regional ones.
+- **Alternatives considered:** (1) Sort by `scope_type DESC` (national > region alphabetically) — fragile, depends on string ordering. (2) Add `is_pinned` boolean — less flexible than sort_order for future ordering needs. (3) Hardcode national first in frontend — bad practice, breaks if more national boards added.
+- **Impact:** New migration `009_regional_boards.sql`. Updated `boardsApi.ts` (Board type + fetchBoards query). Updated `BoardList.tsx` (pinned section + regional section). New CSS styles.
+- **Files:**
+  - `supabase/migrations/009_regional_boards.sql` — NEW
+  - `src/lib/boardsApi.ts` — MODIFIED (Board type, fetchBoards ordering)
+  - `src/pages/BoardList.tsx` — MODIFIED (pinned + regional sections)
+  - `src/global.css` — MODIFIED (pinned card, section divider styles)
+- **Status:** Active
+
+---
+
+### DEC-036: Invite code rework — single-use, 8-char, trackable
+- **Date:** 22 February 2026
+- **Context:** The original invite code system (from Phase 1.1/1.2) used multi-use codes with `max_uses`, `times_used`, and `expires_at` columns. This was over-engineered for our needs and made the admin view cluttered. Dennis wanted a simpler, more transparent system: each code used exactly once, codes are short human-readable strings, and admins can see exactly who used each code and when.
+- **Decision:** Complete rework of the invite code system. Each code is now single-use (one person, one code). Codes are 8-character uppercase alphanumeric strings generated from a 32-character alphabet that excludes ambiguous characters (no 0/O/1/I). Schema simplified: dropped `max_uses`, `times_used`, `expires_at`, `generated_by`; added `used_by` (FK to profiles), `used_at` (timestamp), `created_by` (FK to profiles). No expiry. Admin panel shows all codes with usage status, filter toggle for used/unused, "Generate 10 codes" button (super_admin only, max 50 per call). Tap-to-copy on available codes. Registration form updated: monospace input, auto-uppercase, maxLength 8.
+- **Reasoning:** Single-use is simpler to reason about and audit. 8-char codes from a 32-char alphabet give ~1.1 trillion combinations — more than enough while being short enough to type. Excluding ambiguous characters (0/O/1/I) prevents transcription errors when codes are shared verbally or via screenshots. The `used_by`/`used_at` tracking gives full audit trail. The RPC batch generation function handles collisions and caps at 50 to prevent abuse.
+- **Alternatives considered:** (1) Keep multi-use codes with tracking — rejected, unnecessary complexity. (2) Longer codes (12+ chars) — rejected, harder to share verbally. (3) Code expiry — rejected per Dennis's explicit preference, codes don't expire. (4) Different code alphabets (hex, base62) — rejected, the 32-char alphabet excluding ambiguous characters is the best balance of readability and uniqueness.
+- **Impact:** New migration `008_invite_code_rework.sql`. All existing codes wiped (fresh start). Updated `register` Edge Function. Major rewrite of AdminPanel invite codes tab. Updated Register.tsx input. New CSS for code cards.
+- **Files:**
+  - `supabase/migrations/008_invite_code_rework.sql` — NEW
+  - `supabase/supabase/functions/register/index.ts` — MODIFIED
+  - `src/pages/AdminPanel.tsx` — MODIFIED (major rewrite of invite codes tab)
+  - `src/pages/Register.tsx` — MODIFIED (code input styling)
+  - `src/global.css` — MODIFIED (new code card styles)
+- **Status:** Active
+
+---
+
+### DEC-035: Super admin RLS policy for profile updates
+- **Date:** 22 February 2026
+- **Context:** When a super_admin tried to change another user's role via the Admin Panel, the UI appeared to update (optimistic UI) but the change didn't persist — reloading the page showed the old role. The root cause was that the only UPDATE policy on `profiles` was `auth.uid() = id` (own row only). Supabase RLS silently blocks updates that don't match any policy (returns success with 0 rows affected, no error), so the role change was silently discarded.
+- **Decision:** Add a new RLS policy "Super admins can update any profile" on the `profiles` table for UPDATE operations, using `public.is_current_user_at_least('super_admin')` in both USING and WITH CHECK clauses. Also updated the frontend `handleRoleChange` to verify the update persisted by re-fetching the row after update and reverting local state if the database role doesn't match.
+- **Reasoning:** The `protect_role_column` trigger (from DEC-034) was designed to prevent unauthorized role changes, but RLS was rejecting the query before the trigger even fired. The trigger remains as a defense-in-depth measure. The frontend verification pattern (update → re-fetch → compare → revert on mismatch) prevents the optimistic UI from lying to the user if RLS or the trigger blocks the change.
+- **Alternatives considered:** (1) Use service_role key from an Edge Function — rejected, adds unnecessary complexity for an admin-only operation. (2) Disable RLS for super_admins — rejected, overly broad. (3) Trust the trigger alone — doesn't work because RLS fires before triggers.
+- **Impact:** New migration `007_super_admin_can_update_profiles.sql`. AdminPanel role change now has verification and revert logic.
+- **Files:**
+  - `supabase/migrations/007_super_admin_can_update_profiles.sql` — NEW
+  - `src/pages/AdminPanel.tsx` — MODIFIED (verification logic)
+- **Status:** Active
+
+---
+
 ### DEC-034: 4-tier global role hierarchy
 - **Date:** 22 February 2026
 - **Context:** The platform needed a moderation system. As the community grows, Dennis alone cannot moderate all content. A role hierarchy allows delegation: regional commanders handle local boards, admins handle global moderation and invite codes, and super_admins have permanent, irrevocable authority. The original database architecture doc suggested 6 roles with scope tables, but after discussion a simpler 4-tier global approach was chosen.

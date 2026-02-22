@@ -493,6 +493,42 @@ a:hover {
   font-size: 0.75rem;
 }
 
+/* Pinned board card (national) — subtle highlight */
+.board-card-pinned {
+  border-left: 3px solid var(--colour-primary);
+  background: rgba(0, 86, 179, 0.03);
+}
+.board-card-pinned:active {
+  background: rgba(0, 86, 179, 0.08);
+}
+.board-card-pin-icon {
+  margin-right: 0.35rem;
+  font-size: 0.85rem;
+}
+
+/* Section divider between national and regional boards */
+.boards-section-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.25rem 1rem 0.5rem;
+}
+.boards-section-divider::before,
+.boards-section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--colour-border);
+}
+.boards-section-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--colour-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
 /* ─── Board View Page ──────────────────────────────────────── */
 
 .board-view {
@@ -1349,15 +1385,177 @@ a:hover {
   font-style: italic;
 }
 
-.admin-code-used {
-  color: var(--colour-text-muted);
-  font-size: 0.75rem;
+/* ─── Invite Code Cards ──────────────────────────────────── */
+
+.admin-codes-stats {
+  display: flex;
+  gap: 1.5rem;
+  padding: 0.75rem 0;
+  margin-bottom: 0.5rem;
 }
 
-.admin-code-available {
-  color: #22c55e;
+.admin-codes-stat {
+  font-size: 0.8125rem;
+  color: var(--colour-text-muted);
+}
+
+.admin-codes-stat-number {
+  font-weight: 700;
+  color: var(--colour-text);
+  font-size: 1rem;
+  margin-right: 0.25rem;
+}
+
+.admin-codes-filter {
+  padding: 0.5rem 0 1rem;
+  border-bottom: 1px solid var(--colour-border);
+  margin-bottom: 1rem;
+}
+
+.admin-codes-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  color: var(--colour-text-muted);
+}
+
+.admin-codes-toggle input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--colour-primary);
+}
+
+.admin-codes-toggle-label {
+  user-select: none;
+}
+
+.admin-codes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.admin-codes-empty {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--colour-text-muted);
+  font-size: 0.875rem;
+}
+
+.admin-code-card {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--colour-border);
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.admin-code-card-available {
+  cursor: pointer;
+  background: var(--colour-surface);
+}
+
+.admin-code-card-available:hover {
+  background: rgba(59, 130, 246, 0.06);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.admin-code-card-available:active {
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.admin-code-card-used {
+  background: var(--colour-bg);
+  opacity: 0.7;
+}
+
+.admin-code-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.admin-code-card-code {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 1rem;
   font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--colour-text);
+}
+
+.admin-code-card-used .admin-code-card-code {
+  text-decoration: line-through;
+  color: var(--colour-text-muted);
+}
+
+.admin-code-badge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.admin-code-badge-available {
+  color: var(--colour-text-muted);
+  background: transparent;
+  font-weight: 400;
   font-size: 0.75rem;
+  text-transform: none;
+}
+
+.admin-code-badge-copied {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.admin-code-badge-used {
+  color: var(--colour-text-muted);
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.admin-code-card-details {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.375rem;
+  font-size: 0.75rem;
+  color: var(--colour-text-muted);
+}
+
+.admin-code-card-details strong {
+  color: var(--colour-text);
+  font-weight: 600;
+}
+
+.admin-codes-generate {
+  padding: 1.5rem 0 1rem;
+  display: flex;
+  justify-content: center;
+}
+
+.admin-codes-generate-btn {
+  padding: 0.75rem 1.5rem;
+  background: var(--colour-primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  transition: opacity 0.15s;
+}
+
+.admin-codes-generate-btn:hover {
+  opacity: 0.9;
+}
+
+.admin-codes-generate-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .admin-no-access {

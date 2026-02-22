@@ -7,9 +7,8 @@ import type { Board } from '../lib/boardsApi';
 /**
  * BoardList — lists all boards the user can see.
  *
- * For MVP this shows just gb/national. The list structure exists
- * as the shell for when regional boards (gb/west-midlands, etc.)
- * are added as membership grows.
+ * National board is pinned to the top (sort_order=0) with a distinct
+ * visual style. Regional boards follow alphabetically (sort_order=10).
  */
 
 export function BoardList() {
@@ -43,6 +42,10 @@ export function BoardList() {
     navigate(`/boards/${slug}`);
   }
 
+  // Split boards into national (pinned) and regional groups
+  const nationalBoards = boards.filter(b => b.scope_type === 'national');
+  const regionalBoards = boards.filter(b => b.scope_type === 'region');
+
   return (
     <div className="boards-page">
       <div className="boards-page-header">
@@ -52,6 +55,7 @@ export function BoardList() {
 
       {loading && (
         <div className="boards-loading">
+          <div className="skeleton-card" />
           <div className="skeleton-card" />
           <div className="skeleton-card" />
         </div>
@@ -65,7 +69,40 @@ export function BoardList() {
         <p className="boards-empty">No boards available yet.</p>
       )}
 
-      {!loading && !error && boards.map((board) => (
+      {/* National board(s) — pinned at top with distinct style */}
+      {!loading && !error && nationalBoards.map((board) => (
+        <button
+          key={board.id}
+          className="board-card board-card-pinned"
+          onClick={() => handleBoardClick(board.slug)}
+        >
+          <div className="board-card-header">
+            <span className="board-card-name">
+              <span className="board-card-pin-icon">📌</span>
+              gb/{board.slug}
+            </span>
+            <span className="board-card-post-count">
+              {board.post_count} {board.post_count === 1 ? 'post' : 'posts'}
+            </span>
+          </div>
+          {board.description && (
+            <p className="board-card-description">{board.description}</p>
+          )}
+          <div className="board-card-footer">
+            <TimeAgo timestamp={board.created_at} />
+          </div>
+        </button>
+      ))}
+
+      {/* Section divider between national and regional */}
+      {!loading && !error && nationalBoards.length > 0 && regionalBoards.length > 0 && (
+        <div className="boards-section-divider">
+          <span className="boards-section-label">Regional Boards</span>
+        </div>
+      )}
+
+      {/* Regional boards — alphabetical */}
+      {!loading && !error && regionalBoards.map((board) => (
         <button
           key={board.id}
           className="board-card"

@@ -8,13 +8,12 @@ import type { Role } from '../hooks/useAuth';
  * AdminPanel — admin-only page for platform management.
  *
  * Features:
- * - View and manage invite codes (admin+)
- * - View member list with roles (admin+)
- * - Promote/demote users (super_admin only)
+ * - View member list with roles, promote/demote (super_admin only)
+ * - View invite codes: filter used/available, tap-to-copy, usage tracking
+ * - Generate 10 new codes at a time (super_admin only)
  *
  * Route: /admin
- * Access: admin and super_admin only. Members and commanders
- * are redirected back to the home page.
+ * Access: admin and super_admin only.
  */
 
 interface InviteCode {
@@ -24,6 +23,10 @@ interface InviteCode {
   used_by: string | null;
   used_at: string | null;
   created_at: string;
+  // Joined from profiles when used_by is set
+  used_by_profile?: {
+    username: string;
+  } | null;
 }
 
 interface MemberRow {
@@ -46,6 +49,15 @@ export function AdminPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Invite code filter: show used codes or not
+  const [showUsed, setShowUsed] = useState(false);
+
+  // Clipboard feedback: which code ID was just copied
+  const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
+
+  // Generate button state
+  const [generating, setGenerating] = useState(false);
+
   // Guard: only admin+ can access this page
   const hasAccess = isAtLeast('admin');
 
@@ -54,7 +66,7 @@ export function AdminPanel() {
 
     async function load() {
       try {
-        // Fetch members list — profiles table is readable by authenticated users
+        // Fetch members list
         const { data: memberData, error: memberError } = await supabase
           .from('profiles')
           .select('id, username, email, role, region_id, is_verified, created_at')
@@ -63,10 +75,10 @@ export function AdminPanel() {
         if (memberError) throw memberError;
         setMembers((memberData ?? []) as MemberRow[]);
 
-        // Fetch invite codes — RLS policy allows admin+ to read
+        // Fetch invite codes with joined used_by profile username
         const { data: codeData, error: codeError } = await supabase
           .from('invite_codes')
-          .select('*')
+          .select('id, code, created_by, used_by, used_at, created_at, used_by_profile:profiles!invite_codes_used_by_fkey(username)')
           .order('created_at', { ascending: false });
 
         if (codeError) throw codeError;
@@ -103,13 +115,97 @@ export function AdminPanel() {
 
       if (error) throw error;
 
-      // Update local state
+      // Verify the update actually persisted (RLS can silently block updates)
+      const { data: verify, error: verifyError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
+
+      if (verifyError) throw verifyError;
+
+      if (verify.role !== newRole) {
+        throw new Error(
+          'Role update was blocked by the database. Check that your account has super_admin privileges.'
+        );
+      }
+
+      // Update local state only after confirmed persistence
       setMembers((prev) =>
         prev.map((m) => (m.id === userId ? { ...m, role: newRole } : m))
       );
     } catch (err: any) {
       console.error('[AdminPanel] Role change failed:', err);
       alert(`Failed to change role: ${err.message}`);
+      // Revert optimistic UI by re-fetching
+      const { data: current } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
+      if (current) {
+        setMembers((prev) =>
+          prev.map((m) => (m.id === userId ? { ...m, role: current.role as Role } : m))
+        );
+      }
+    }
+  }
+
+  // Copy invite code to clipboard
+  async function handleCopyCode(code: string, codeId: string) {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCodeId(codeId);
+      // Clear the "Copied!" feedback after 2 seconds
+      setTimeout(() => setCopiedCodeId(null), 2000);
+    } catch {
+      // Fallback for older browsers / non-HTTPS
+      const textarea = document.createElement('textarea');
+      textarea.value = code;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setCopiedCodeId(codeId);
+      setTimeout(() => setCopiedCodeId(null), 2000);
+    }
+  }
+
+  // Generate 10 new codes via RPC
+  async function handleGenerateCodes() {
+    if (!isAtLeast('super_admin')) {
+      alert('Only super admins can generate codes.');
+      return;
+    }
+
+    setGenerating(true);
+    try {
+      const { data, error } = await supabase.rpc('generate_invite_codes', {
+        count: 10,
+      });
+
+      if (error) throw error;
+
+      // Add the new codes to local state (they come back from the RPC)
+      const newCodes: InviteCode[] = (data ?? []).map((row: any) => ({
+        id: row.id,
+        code: row.code,
+        created_by: profile?.id || null,
+        used_by: null,
+        used_at: null,
+        created_at: row.created_at,
+        used_by_profile: null,
+      }));
+
+      // Prepend new codes (they're the newest)
+      setInviteCodes((prev) => [...newCodes, ...prev]);
+    } catch (err: any) {
+      console.error('[AdminPanel] Code generation failed:', err);
+      alert(`Failed to generate codes: ${err.message}`);
+    } finally {
+      setGenerating(false);
     }
   }
 
@@ -142,6 +238,14 @@ export function AdminPanel() {
   }
 
   const isSuperAdmin = isAtLeast('super_admin');
+
+  // Filter codes based on toggle
+  const filteredCodes = showUsed
+    ? inviteCodes
+    : inviteCodes.filter((c) => c.used_by === null);
+
+  const availableCount = inviteCodes.filter((c) => c.used_by === null).length;
+  const usedCount = inviteCodes.filter((c) => c.used_by !== null).length;
 
   return (
     <div className="admin-panel">
@@ -225,48 +329,102 @@ export function AdminPanel() {
       {/* Invite codes tab */}
       {activeTab === 'invites' && (
         <div className="admin-section">
-          <div className="admin-table-scroll">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Code</th>
-                  <th>Status</th>
-                  <th>Used At</th>
-                  <th>Created</th>
-                </tr>
-              </thead>
-              <tbody>
-                {inviteCodes.map((code) => (
-                  <tr key={code.id}>
-                    <td className="admin-cell-code">{code.code}</td>
-                    <td>
-                      {code.used_by ? (
-                        <span className="admin-code-used">Used</span>
-                      ) : (
-                        <span className="admin-code-available">Available</span>
-                      )}
-                    </td>
-                    <td className="admin-cell-date">
-                      {code.used_at
-                        ? new Date(code.used_at).toLocaleDateString('en-GB', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                          })
-                        : '—'}
-                    </td>
-                    <td className="admin-cell-date">
-                      {new Date(code.created_at).toLocaleDateString('en-GB', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                      })}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {/* Stats bar */}
+          <div className="admin-codes-stats">
+            <span className="admin-codes-stat">
+              <span className="admin-codes-stat-number">{availableCount}</span> available
+            </span>
+            <span className="admin-codes-stat">
+              <span className="admin-codes-stat-number">{usedCount}</span> used
+            </span>
           </div>
+
+          {/* Filter toggle */}
+          <div className="admin-codes-filter">
+            <label className="admin-codes-toggle">
+              <input
+                type="checkbox"
+                checked={showUsed}
+                onChange={(e) => setShowUsed(e.target.checked)}
+              />
+              <span className="admin-codes-toggle-label">Show used codes</span>
+            </label>
+          </div>
+
+          {/* Code list */}
+          <div className="admin-codes-list">
+            {filteredCodes.length === 0 && (
+              <p className="admin-codes-empty">
+                {showUsed
+                  ? 'No codes found.'
+                  : 'No available codes. Generate some below.'}
+              </p>
+            )}
+            {filteredCodes.map((code) => {
+              const isUsed = code.used_by !== null;
+              const isCopied = copiedCodeId === code.id;
+
+              return (
+                <div
+                  key={code.id}
+                  className={`admin-code-card ${isUsed ? 'admin-code-card-used' : 'admin-code-card-available'}`}
+                  onClick={() => !isUsed && handleCopyCode(code.code, code.id)}
+                  role={isUsed ? undefined : 'button'}
+                  tabIndex={isUsed ? undefined : 0}
+                  onKeyDown={(e) => {
+                    if (!isUsed && (e.key === 'Enter' || e.key === ' ')) {
+                      e.preventDefault();
+                      handleCopyCode(code.code, code.id);
+                    }
+                  }}
+                >
+                  <div className="admin-code-card-top">
+                    <span className="admin-code-card-code">
+                      {code.code}
+                    </span>
+                    {isUsed ? (
+                      <span className="admin-code-badge admin-code-badge-used">Used</span>
+                    ) : isCopied ? (
+                      <span className="admin-code-badge admin-code-badge-copied">Copied!</span>
+                    ) : (
+                      <span className="admin-code-badge admin-code-badge-available">Tap to copy</span>
+                    )}
+                  </div>
+                  {isUsed && (
+                    <div className="admin-code-card-details">
+                      <span>
+                        Used by <strong>@{code.used_by_profile?.username || 'unknown'}</strong>
+                      </span>
+                      <span>
+                        {code.used_at
+                          ? new Date(code.used_at).toLocaleDateString('en-GB', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : '—'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Generate button — super_admin only */}
+          {isSuperAdmin && (
+            <div className="admin-codes-generate">
+              <button
+                className="admin-codes-generate-btn"
+                onClick={handleGenerateCodes}
+                disabled={generating}
+              >
+                {generating ? 'Generating…' : 'Generate 10 codes'}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

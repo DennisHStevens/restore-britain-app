@@ -319,6 +319,33 @@ Everything we build serves this. Every goal, every phase, every task is measured
 - [x] Browser test: Lock/Unlock toggles correctly, Mod Delete visible on others' comments, Admin Panel shows members and invite codes — ✅ Completed: 22 Feb 2026, 21:05
 - [x] Log decision DEC-034 in `decisions-log.md` — ✅ Completed: 22 Feb 2026, 21:10
 
+*Super admin role editing fix (see DEC-035):*
+- [x] Write migration `007_super_admin_can_update_profiles.sql`: add RLS policy allowing super_admins to update any profile row — ✅ Completed: 22 Feb 2026, 21:30
+- [x] Run migration 007 on Supabase — ✅ Completed: 22 Feb 2026, 21:35
+- [x] Update AdminPanel `handleRoleChange`: add post-update verification (re-fetch and compare), revert on mismatch — ✅ Completed: 22 Feb 2026, 21:40
+- [x] Browser test: change role → reload → confirm persistence → revert — ✅ Completed: 22 Feb 2026, 21:45
+- [x] Log decision DEC-035 in `decisions-log.md` — ✅ Completed: 22 Feb 2026, 22:30
+
+*Invite code rework (see DEC-036):*
+- [x] Write migration `008_invite_code_rework.sql`: wipe old codes, simplify to single-use schema, add used_by/used_at/created_by, code generation functions, seed 20 codes — ✅ Completed: 22 Feb 2026, 22:00
+- [x] Run migration 008 on Supabase — ✅ Completed: 22 Feb 2026, 22:20
+- [x] Update `register` Edge Function for new single-use schema — ✅ Completed: 22 Feb 2026, 22:10
+- [x] Rewrite AdminPanel invite codes tab: card-based UI, stats bar, used/available filter, tap-to-copy, Generate 10 codes button — ✅ Completed: 22 Feb 2026, 22:15
+- [x] Update Register.tsx: 8-char code input with monospace font, auto-uppercase, maxLength — ✅ Completed: 22 Feb 2026, 22:15
+- [x] Add invite code card CSS to global.css — ✅ Completed: 22 Feb 2026, 22:15
+- [x] Browser test: view 20 codes, generate 10 more (30 total), tap-to-copy, stats update correctly — ✅ Completed: 22 Feb 2026, 22:30
+- [x] Log decision DEC-036 in `decisions-log.md` — ✅ Completed: 22 Feb 2026, 22:30
+
+*Regional boards and national pinning (see DEC-037):*
+- [x] Write migration `009_regional_boards.sql`: add sort_order column, seed 12 regional boards linked to regions, pin national board — ✅ Completed: 22 Feb 2026, 23:40
+- [x] Run migration 009 on Supabase — ✅ Completed: 22 Feb 2026, 23:42
+- [x] Update `boardsApi.ts`: add sort_order to Board type, update fetchBoards to sort by sort_order then name — ✅ Completed: 22 Feb 2026, 23:38
+- [x] Update `BoardList.tsx`: split into pinned national section and regional section with divider — ✅ Completed: 22 Feb 2026, 23:38
+- [x] Add CSS for pinned board card and section divider — ✅ Completed: 22 Feb 2026, 23:38
+- [x] Fix Edge Function deploy path: move from `supabase/supabase/functions/` to `supabase/functions/` — ✅ Completed: 22 Feb 2026, 23:43
+- [x] Browser test: 13 boards visible (1 national pinned + 12 regional), correct ordering — ✅ Completed: 22 Feb 2026, 23:44
+- [x] Log decision DEC-037 in `decisions-log.md` — ✅ Completed: 22 Feb 2026, 23:45
+
 *Commit:*
 - [ ] Commit and push: `git commit -m "Phase 1.6: gb/ Boards — in-app forum with posts, comments, voting, and image uploads"`
 

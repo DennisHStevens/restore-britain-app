@@ -117,10 +117,11 @@ export function Register() {
             <input
               type="text"
               value={inviteCode}
-              onChange={(e) => setInviteCode(e.target.value)}
-              placeholder="Enter your invite code"
-              style={styles.input}
+              onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+              placeholder="8-character code (e.g. K7X2M4NP)"
+              style={{ ...styles.input, fontFamily: "'SF Mono', 'Fira Code', monospace", letterSpacing: '0.1em', textTransform: 'uppercase' }}
               autoComplete="off"
+              maxLength={8}
               disabled={submitting}
             />
           </label>
