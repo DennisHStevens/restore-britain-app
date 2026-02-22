@@ -1,0 +1,4 @@
+# Cloudflare Pages SPA routing
+# All routes serve index.html so React Router handles client-side navigation.
+# Without this, direct navigation to /boards/national or /admin returns 404.
+/* /index.html 200

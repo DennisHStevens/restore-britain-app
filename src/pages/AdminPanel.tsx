@@ -23,10 +23,9 @@ interface InviteCode {
   used_by: string | null;
   used_at: string | null;
   created_at: string;
-  // Joined from profiles when used_by is set
-  used_by_profile?: {
-    username: string;
-  } | null;
+  // Supabase PostgREST returns joined relations as arrays even for single values.
+  // This stores the joined profile when used_by is set.
+  used_by_profile?: Array<{ username: string }> | null;
 }
 
 interface MemberRow {
@@ -82,7 +81,9 @@ export function AdminPanel() {
           .order('created_at', { ascending: false });
 
         if (codeError) throw codeError;
-        setInviteCodes((codeData ?? []) as InviteCode[]);
+        // Supabase PostgREST returns joined relations as arrays even for single-row joins.
+        // Cast through unknown to handle the mismatch between returned array format and InviteCode type.
+        setInviteCodes((codeData ?? []) as unknown as InviteCode[]);
       } catch (err: any) {
         console.error('[AdminPanel] Load failed:', err);
         setError(err.message || 'Failed to load admin data.');
@@ -393,7 +394,7 @@ export function AdminPanel() {
                   {isUsed && (
                     <div className="admin-code-card-details">
                       <span>
-                        Used by <strong>@{code.used_by_profile?.username || 'unknown'}</strong>
+                        Used by <strong>@{code.used_by_profile?.[0]?.username || 'unknown'}</strong>
                       </span>
                       <span>
                         {code.used_at

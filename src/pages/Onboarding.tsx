@@ -46,7 +46,7 @@ export function Onboarding() {
 
   /* ── Map picker state ──────────────────────────────────────── */
   const [mode, setMode] = useState<'postcode' | 'map'>('postcode');
-  const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null);
+  const [_selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null);
   const [selectedRegionName, setSelectedRegionName] = useState<string | null>(null);
 
   /**

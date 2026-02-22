@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { fetchBoardBySlug, createPost, uploadBoardImage } from '../lib/boardsApi';
+import { fetchBoardBySlug, createPost } from '../lib/boardsApi';
 import { ImageUploader } from '../components/boards/ImageUploader';
 import type { Board } from '../lib/boardsApi';
 

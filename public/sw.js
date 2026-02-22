@@ -14,7 +14,7 @@
  * Cache version: bump CACHE_VERSION to force a full cache refresh on deploy.
  */
 
-const CACHE_VERSION = 'rb-v3';
+const CACHE_VERSION = 'rb-v4';
 const PRECACHE_URLS = [
   '/',
   '/favicon.png',

@@ -347,7 +347,7 @@ Everything we build serves this. Every goal, every phase, every task is measured
 - [x] Log decision DEC-037 in `decisions-log.md` — ✅ Completed: 22 Feb 2026, 23:45
 
 *Commit:*
-- [ ] Commit and push: `git commit -m "Phase 1.6: gb/ Boards — in-app forum with posts, comments, voting, and image uploads"`
+- [x] Commit and push: `git commit -m "feat: admin fixes, invite code rework, regional boards"` — ✅ Completed: 22 Feb 2026, 23:55
 
 ---
 
@@ -361,18 +361,53 @@ Everything we build serves this. Every goal, every phase, every task is measured
 
 **Tasks:**
 
-- [ ] ⚠️ Choose hosting platform (Vercel or Cloudflare Pages) and log decision in DECISIONS.md
-- [ ] Create hosting account and connect to the project's Git repository
-- [ ] Configure environment variables on the hosting platform: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-- [ ] Deploy the app — verify successful build with no errors
-- [ ] Configure security headers on all responses: HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, Content-Security-Policy
+- [x] ⚠️ Choose hosting platform (Vercel or Cloudflare Pages) and log decision in DECISIONS.md — Cloudflare Pages chosen. See DEC-038. ✅ Completed: 22 Feb 2026, 23:55
+
+*Pre-deploy code fixes:*
+- [ ] Fix `vite.config.ts`: remove hardcoded `cacheDir: '/tmp/.vite'` (VM-only path, breaks on Cloudflare build servers)
+- [ ] Create `public/_redirects`: SPA catch-all (`/* /index.html 200`) so direct URL navigation works
+- [ ] Create `public/_headers`: security headers (HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, CSP)
+- [ ] Bump service worker cache version `rb-v3` → `rb-v4` (force fresh caches on production)
+- [ ] Create `.node-version` file set to `18` (Cloudflare defaults to Node 12 otherwise)
+- [ ] Commit and push pre-deploy changes
+
+*Cloudflare Pages setup:*
+- [ ] Create Cloudflare Pages project connected to `DennisHStevens/restore-britain-app` GitHub repo
+- [ ] Configure build: command `npm run build`, output directory `dist`
+- [ ] Set environment variables: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` only (NOT the service role key — that's server-side only)
+- [ ] Trigger first deploy — verify build succeeds with no errors
+
+*Post-deploy verification:*
+- [ ] Update Supabase Auth "Site URL" setting to the new Cloudflare Pages URL
 - [ ] Verify HTTPS is enforced (no HTTP access possible)
-- [ ] Test the full flow on the live URL from a mobile device: open URL → login page → register with invite code → postcode entry → map loads → tap region → see detail panel → Telegram link works and opens correct group → profile page works → edit profile works
-- [ ] Test PWA install from the live URL: "Add to Home Screen" on both iOS and Android, verify fullscreen launch
+- [ ] Test the full flow on the live URL: open URL → login → map loads → tap region → see detail panel → boards → post → profile → edit profile
+- [ ] Verify Supabase Edge Functions work in production (register with an invite code)
+- [ ] Test PWA install from the live URL: "Add to Home Screen" on iOS, verify fullscreen launch
 - [ ] Run a Lighthouse audit: target scores of 90+ on Performance, Accessibility, Best Practices, and PWA
 - [ ] Optional: connect a custom domain if one has been purchased. Configure DNS, verify SSL certificate.
-- [ ] Verify Supabase Edge Functions work in production (invite code verification)
-- [ ] Commit and push any deployment config: `git commit -m "Phase 1.7: Production deployment with security headers"`
+- [ ] Commit and push any post-deploy config: `git commit -m "Phase 1.7: Production deployment with security headers"`
+
+---
+
+### Phase 1.7.2 — Project Folder Cleanup & Organisation
+
+**What this phase covers:** Tidying up the project directory structure after rapid development. Removing dead files, fixing inconsistent paths, organising migrations, and ensuring the repo is clean and navigable.
+
+**Estimated time:** 0.5 day
+
+#### Milestone: The project folder is clean, well-organised, and free of dead code, duplicate files, or orphaned directories. A new developer could clone the repo and immediately understand the structure.
+
+**Tasks:**
+
+- [ ] Audit and remove the nested `supabase/supabase/` directory (legacy duplicate from early setup — functions, migrations, seeds duplicated at wrong path)
+- [ ] Verify `supabase/functions/register/index.ts` is the canonical Edge Function location
+- [ ] Audit `public/icons/` — there's a double-nested `icons/icons/` path referenced in manifest.json and service worker. Flatten if needed or verify it's correct.
+- [ ] Remove any `.DS_Store` files from the repo
+- [ ] Review all migration files (001–009) are correctly numbered and contain accurate header comments
+- [ ] Verify `.gitignore` covers all necessary exclusions (node_modules, .env.local, .DS_Store, dist, etc.)
+- [ ] Run `npx tsc --noEmit` and `npm run build` — verify zero errors, zero warnings
+- [ ] Audit `package.json`: update name from `restore-britain-temp` to `restore-britain-app`
+- [ ] Commit and push: `git commit -m "Phase 1.7.2: Project folder cleanup and organisation"`
 
 ---
 

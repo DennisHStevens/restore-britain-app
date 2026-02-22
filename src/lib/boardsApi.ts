@@ -184,7 +184,9 @@ export async function fetchPosts(
   const { data, error } = await query;
   if (error) throw error;
 
-  const posts = (data ?? []) as Post[];
+  // Supabase PostgREST returns joined relations as arrays even for single-row joins.
+  // Cast through unknown to handle the mismatch between returned array format and Post type.
+  const posts = (data ?? []) as unknown as Post[];
   const hasMore = posts.length > PAGE_SIZE;
 
   // Remove the extra item used for hasMore detection
@@ -213,7 +215,9 @@ export async function fetchPost(postId: string): Promise<Post | null> {
     if (error.code === 'PGRST116') return null;
     throw error;
   }
-  return data as Post;
+  // Supabase PostgREST returns joined relations as arrays even for single-row joins.
+  // Cast through unknown to handle the mismatch between returned array format and Post type.
+  return data as unknown as Post;
 }
 
 /**
@@ -266,7 +270,9 @@ export async function fetchComments(postId: string): Promise<Comment[]> {
 
   if (error) throw error;
 
-  const comments = (data ?? []) as Comment[];
+  // Supabase PostgREST returns joined relations as arrays even for single-row joins.
+  // Cast through unknown to handle the mismatch between returned array format and Comment type.
+  const comments = (data ?? []) as unknown as Comment[];
 
   // Build a map of comment IDs to author names for reply-to resolution.
   // This avoids N+1 queries — we already have all comments loaded.

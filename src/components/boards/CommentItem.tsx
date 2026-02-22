@@ -14,14 +14,7 @@ import type { Comment } from '../../lib/boardsApi';
  * Soft-deleted comments render as a "[deleted]" placeholder with no body,
  * images, or actions — but their children remain visible below them,
  * preserving the conversation thread (same as Reddit).
- *
- * Indentation is capped at MAX_VISUAL_DEPTH to remain usable on mobile.
  */
-
-/** Max visual indentation levels — prevents comments from becoming
- *  unreadably narrow on mobile screens. Comments beyond this depth
- *  still appear nested but stop indenting further. */
-const MAX_VISUAL_DEPTH = 6;
 
 /** Pixels of left margin per indentation level */
 const INDENT_PX = 20;
@@ -53,8 +46,6 @@ export function CommentItem({ comment, depth, currentUserId, canModerate, onRepl
   // Moderators can delete any non-deleted comment (but not their own — that's already covered by isOwnComment)
   const canModDelete = !isDeleted && canModerate && !isOwnComment;
 
-  // Visual depth is capped to keep comments readable on mobile
-  const visualDepth = Math.min(depth, MAX_VISUAL_DEPTH);
 
   function handleReply() {
     onReply(comment.id, authorUsername);

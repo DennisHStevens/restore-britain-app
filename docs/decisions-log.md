@@ -23,6 +23,17 @@ Each entry follows this structure:
 
 ## Active Decisions
 
+### DEC-038: Cloudflare Pages for hosting
+- **Date:** 22 February 2026
+- **Context:** Phase 1.7 requires deploying the app to a live URL. The two main contenders were Vercel and Cloudflare Pages. Dennis already has a Cloudflare account (visible in browser tabs during development).
+- **Decision:** Use Cloudflare Pages for hosting the production build. Cloudflare Pages provides free hosting with automatic HTTPS, global CDN, Git-based deployments, and easy custom domain configuration. Dennis already has an active Cloudflare account, reducing onboarding friction.
+- **Reasoning:** Cloudflare Pages offers generous free tier (unlimited sites, unlimited bandwidth), built-in security headers configuration via `_headers` file, automatic HTTPS with no configuration needed, and Dennis already has an account set up. Edge network is global with strong UK presence, which matters for a UK-focused political platform.
+- **Alternatives considered:** (1) Vercel — excellent DX and preview deployments, but no existing account and slightly more complex for pure static/SPA hosting. (2) Self-hosted on a VPS — unnecessary complexity for a static SPA. (3) Netlify — similar to Cloudflare Pages but Dennis has no existing relationship.
+- **Impact:** Deployment will use `npm run build` → Cloudflare Pages picks up the `dist/` output directory. Environment variables (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) configured in Cloudflare Pages dashboard. Security headers via `public/_headers` file.
+- **Status:** Active
+
+---
+
 ### DEC-037: Regional boards + national board pinning
 - **Date:** 22 February 2026
 - **Context:** The platform had only gb/national as a discussion board. Dennis requested all 12 regional boards be created and the national board pinned to the top of the board list.
