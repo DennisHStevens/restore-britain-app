@@ -23,6 +23,21 @@ import {
   REGION_NAMES,
 } from './regionColours';
 
+/**
+ * Static GeoJSON import — bundled at build time by Vite.
+ *
+ * WHY NOT fetch at runtime? MapLibre's internal blob: web worker cannot
+ * reliably fetch URLs on Cloudflare Pages (the service worker doesn't
+ * intercept blob-origin requests, so fetches fail silently). Even passing
+ * a pre-fetched object to addSource still requires the worker to process
+ * it for tiling, and that worker communication also fails in this env.
+ *
+ * By importing the GeoJSON statically, the data is embedded in the JS
+ * bundle (~166KB, ~45KB gzipped) and available synchronously — no fetch,
+ * no worker-fetch, no race conditions.
+ */
+import ukRegionsData from '../../data/uk-regions.json';
+
 interface RegionMapProps {
   /** Called when a region is tapped/clicked — opens the bottom sheet. */
   onRegionSelect?: (regionId: string, regionName: string) => void;
@@ -150,32 +165,12 @@ export function RegionMap({ onRegionSelect, onBackgroundClick }: RegionMapProps)
       animate: false,
     });
 
-    map.on('load', async () => {
-      /**
-       * Fetch GeoJSON from the main thread and pass the parsed object to
-       * MapLibre rather than giving it a URL string.
-       *
-       * WHY: When MapLibre is given a URL, it delegates the fetch to its
-       * internal Web Worker (a blob: URL worker). On Cloudflare Pages with
-       * a service worker, the blob-origin worker's fetch requests are not
-       * intercepted by the SW and fail silently — resulting in an empty
-       * source with 0 features. Fetching on the main thread (where the SW
-       * is active) and passing the parsed GeoJSON object directly bypasses
-       * this entirely.
-       */
-      let geojsonData: GeoJSON.FeatureCollection;
-      try {
-        const response = await fetch('/data/uk-regions.geojson');
-        geojsonData = await response.json();
-      } catch (err) {
-        console.error('[RegionMap] Failed to load GeoJSON:', err);
-        return;
-      }
-
-      /* Add the merged GeoJSON as a source */
+    map.on('load', () => {
+      /* Add the statically-imported GeoJSON as a source.
+       * Data is already parsed (Vite imports JSON as objects). */
       map.addSource('regions', {
         type: 'geojson',
-        data: geojsonData,
+        data: ukRegionsData as unknown as GeoJSON.FeatureCollection,
         /* promoteId tells MapLibre which property to use as the feature ID
          * for feature-state operations (hover, selection, etc.) */
         promoteId: 'id',
