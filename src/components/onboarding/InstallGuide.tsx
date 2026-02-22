@@ -114,7 +114,9 @@ export function InstallGuide({ onContinue }: Props) {
                   Tap <strong>"Add to Home Screen"</strong>
                 </p>
                 <p style={styles.stepDetail}>
-                  Scroll down in the share menu until you see it
+                  Scroll down in the share menu until you see it.
+                  If you can't find it, look for a <strong>"More"</strong> option
+                  (three dots) — it may be hidden there.
                 </p>
               </div>
             </div>
