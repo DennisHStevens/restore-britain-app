@@ -295,6 +295,9 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: '100vh',
     padding: '1.5rem 1rem',
     backgroundColor: 'var(--colour-bg)',
+    maxWidth: '100vw',
+    overflowX: 'hidden' as const,
+    boxSizing: 'border-box' as const,
   },
   card: {
     width: '100%',

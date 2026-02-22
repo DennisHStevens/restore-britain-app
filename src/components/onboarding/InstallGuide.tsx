@@ -265,6 +265,12 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: '100vh',
     padding: '1.5rem 1rem',
     backgroundColor: 'var(--colour-bg)',
+    /* Prevent horizontal overflow on mobile Safari — elements that
+       wrap or flex-grow can push the body wider than the viewport
+       when there's no overflow constraint on a full-screen container. */
+    maxWidth: '100vw',
+    overflowX: 'hidden' as const,
+    boxSizing: 'border-box' as const,
   },
   card: {
     width: '100%',
