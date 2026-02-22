@@ -23,6 +23,46 @@ Each entry follows this structure:
 
 ## Active Decisions
 
+### DEC-041: PWA install guide as onboarding step
+- **Date:** 22 February 2026
+- **Context:** Many users won't know how to add a PWA to their home screen. Dennis requested a tutorial that appears after registration but before region selection, showing device-specific instructions.
+- **Decision:** Added a step state machine to `Onboarding.tsx`: `'install-guide' | 'region-select'`. The install guide appears first (unless the PWA is already installed, detected via `display-mode: standalone` media query). A new `InstallGuide.tsx` component detects the platform (iOS/Android/Desktop) and shows appropriate instructions. On Android Chrome, it captures the `beforeinstallprompt` event to offer a native "Install" button. On iOS, it shows a visual 3-step guide (Share → Add to Home Screen → Add). On desktop, it shows a brief message.
+- **Reasoning:** Embedding the guide as a state step within Onboarding.tsx (rather than a separate route or modal) keeps all onboarding logic in one place. No routing changes needed. The guide naturally appears only once per user because `/onboarding` only renders when `region_id` is null. The standalone detection skips the guide for users who already installed via other means.
+- **Alternatives considered:** (1) Separate `/install-guide` route — adds routing complexity for a one-time screen. (2) Modal overlay on the onboarding page — the onboarding page has no visual content to overlay (it's just a card), so a modal would look odd. (3) Post-onboarding popup — less effective, user is already past the commitment point.
+- **Impact:** New component, minor modification to Onboarding.tsx. No database changes.
+- **Files:**
+  - `src/components/onboarding/InstallGuide.tsx` — NEW
+  - `src/pages/Onboarding.tsx` — MODIFIED (import, step state, conditional render)
+- **Status:** Active
+
+---
+
+### DEC-040: Force repaint after synchronous GeoJSON load
+- **Date:** 22 February 2026
+- **Context:** After switching to static GeoJSON import, MapLibre's render loop could stall — the data arrives synchronously (already parsed by Vite's JSON import) after the initial style paint, so no new render frame is automatically scheduled. The source showed 29 features loaded and 17 rendered in MapLibre's internal state, but the canvas wasn't being painted.
+- **Decision:** Call `map.resize()` followed by `map.triggerRepaint()` at the end of the `map.on('load')` callback, after all layers are added. `resize()` recalculates the viewport dimensions, and `triggerRepaint()` queues the next render frame.
+- **Reasoning:** This is a known edge case with MapLibre when source data is available synchronously rather than arriving via an async fetch. The two calls together ensure the GPU pipeline flushes and the canvas is updated. Zero performance cost — it's just scheduling one extra frame.
+- **Alternatives considered:** (1) `requestAnimationFrame` wrapper — less reliable, doesn't trigger MapLibre's internal dirty-check. (2) Delay layer addition with `setTimeout` — hacky, introduces visible flash.
+- **Impact:** Two lines added to `RegionMap.tsx` inside the load callback.
+- **Files:** `src/components/map/RegionMap.tsx` — MODIFIED
+- **Status:** Active
+
+---
+
+### DEC-039: Static GeoJSON import (bundled at build time)
+- **Date:** 22 February 2026
+- **Context:** MapLibre's internal blob: URL web worker could not reliably fetch the GeoJSON file at runtime on Cloudflare Pages. When MapLibre receives a URL as GeoJSON source data, it delegates the fetch to a web worker spawned from a blob: URL. On Cloudflare Pages with an active service worker, the blob-origin worker's fetch requests fail silently — the service worker doesn't intercept blob-origin requests. Initial fix attempt (fetching on the main thread and passing the parsed object) also failed because MapLibre still delegates processing to the blob: worker.
+- **Decision:** Import the GeoJSON file as a static Vite JSON import (`import ukRegionsData from '../../data/uk-regions.json'`). This bundles the ~166KB file into the JS bundle (~45KB gzipped). The parsed object is passed directly to `map.addSource()` as data, bypassing any network fetch entirely.
+- **Reasoning:** Eliminates all fetch-related failure modes. The GeoJSON is small enough that bundling it adds negligible weight (45KB gzipped). The data is a static asset that never changes at runtime, so there's no benefit to fetching it dynamically. This is the most robust approach for a tile-free choropleth map.
+- **Alternatives considered:** (1) URL-based source with runtime fetch — failed due to blob: worker fetch issue. (2) Main-thread fetch then pass object — also failed due to worker processing delegation. (3) Hosting GeoJSON on external CDN — unnecessary complexity, still susceptible to worker fetch issues.
+- **Impact:** New file `src/data/uk-regions.json` (copy of `public/data/uk-regions.geojson`). `RegionMap.tsx` rewritten to use static import. Bundle size increases by ~45KB gzipped.
+- **Files:**
+  - `src/data/uk-regions.json` — NEW
+  - `src/components/map/RegionMap.tsx` — MODIFIED (major rewrite: removed async fetch, added static import)
+- **Status:** Active
+
+---
+
 ### DEC-038: Cloudflare Pages for hosting
 - **Date:** 22 February 2026
 - **Context:** Phase 1.7 requires deploying the app to a live URL. The two main contenders were Vercel and Cloudflare Pages. Dennis already has a Cloudflare account (visible in browser tabs during development).

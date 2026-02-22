@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { getRegionFromPostcode } from '../lib/postcodeRegions';
 import { RegionMap } from '../components/map/RegionMap';
+import { InstallGuide } from '../components/onboarding/InstallGuide';
 
 /**
  * Onboarding — shown after registration when region_id is still null.
@@ -38,6 +39,19 @@ export function Onboarding() {
   const { profile, refreshProfile } = useAuth();
   const navigate = useNavigate();
 
+  /**
+   * Onboarding step: install guide first, then region selection.
+   *
+   * We skip the install guide if the app is already running as an installed
+   * PWA (display-mode: standalone), since the user already has it on their
+   * home screen. The matchMedia check is safe — it returns false on browsers
+   * that don't support the query.
+   */
+  const [step, setStep] = useState<'install-guide' | 'region-select'>(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+    return isStandalone ? 'region-select' : 'install-guide';
+  });
+
   /* ── Postcode entry state ──────────────────────────────────── */
   const [postcode, setPostcode] = useState('');
   const [saving, setSaving] = useState(false);
@@ -59,6 +73,12 @@ export function Onboarding() {
       navigate('/', { replace: true });
     }
   }, [profile?.region_id, navigate]);
+
+  /* ── Install guide step (shown before region selection) ──── */
+
+  if (step === 'install-guide') {
+    return <InstallGuide onContinue={() => setStep('region-select')} />;
+  }
 
   /* ── Postcode handlers ─────────────────────────────────────── */
 

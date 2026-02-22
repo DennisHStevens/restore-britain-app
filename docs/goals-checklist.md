@@ -364,28 +364,37 @@ Everything we build serves this. Every goal, every phase, every task is measured
 - [x] ⚠️ Choose hosting platform (Vercel or Cloudflare Pages) and log decision in DECISIONS.md — Cloudflare Pages chosen. See DEC-038. ✅ Completed: 22 Feb 2026, 23:55
 
 *Pre-deploy code fixes:*
-- [ ] Fix `vite.config.ts`: remove hardcoded `cacheDir: '/tmp/.vite'` (VM-only path, breaks on Cloudflare build servers)
-- [ ] Create `public/_redirects`: SPA catch-all (`/* /index.html 200`) so direct URL navigation works
-- [ ] Create `public/_headers`: security headers (HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, CSP)
-- [ ] Bump service worker cache version `rb-v3` → `rb-v4` (force fresh caches on production)
-- [ ] Create `.node-version` file set to `18` (Cloudflare defaults to Node 12 otherwise)
-- [ ] Commit and push pre-deploy changes
+- [x] Fix `vite.config.ts`: remove hardcoded `cacheDir: '/tmp/.vite'` (VM-only path, breaks on Cloudflare build servers) — ✅ Completed: 22 Feb 2026, 17:30
+- [x] Create `public/_redirects`: SPA catch-all (`/* /index.html 200`) so direct URL navigation works — ✅ Completed: 22 Feb 2026, 17:30
+- [x] Create `public/_headers`: security headers (HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, CSP) — ✅ Completed: 22 Feb 2026, 17:30
+- [x] Bump service worker cache version `rb-v3` → `rb-v4` (force fresh caches on production) — ✅ Completed: 22 Feb 2026, 17:30
+- [x] Create `.node-version` file set to `18` (Cloudflare defaults to Node 12 otherwise) — ✅ Completed: 22 Feb 2026, 17:30
+- [x] Commit and push pre-deploy changes — ✅ Completed: 22 Feb 2026, 17:45
 
 *Cloudflare Pages setup:*
-- [ ] Create Cloudflare Pages project connected to `DennisHStevens/restore-britain-app` GitHub repo
-- [ ] Configure build: command `npm run build`, output directory `dist`
-- [ ] Set environment variables: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` only (NOT the service role key — that's server-side only)
-- [ ] Trigger first deploy — verify build succeeds with no errors
+- [x] Create Cloudflare Pages project connected to `DennisHStevens/restore-britain-app` GitHub repo — ✅ Completed: 22 Feb 2026, 18:00
+- [x] Configure build: command `npm run build`, output directory `dist` — ✅ Completed: 22 Feb 2026, 18:00
+- [x] Set environment variables: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` only (NOT the service role key — that's server-side only) — ✅ Completed: 22 Feb 2026, 18:00
+- [x] Trigger first deploy — verify build succeeds with no errors — ✅ Completed: 22 Feb 2026, 18:00
 
 *Post-deploy verification:*
-- [ ] Update Supabase Auth "Site URL" setting to the new Cloudflare Pages URL
-- [ ] Verify HTTPS is enforced (no HTTP access possible)
-- [ ] Test the full flow on the live URL: open URL → login → map loads → tap region → see detail panel → boards → post → profile → edit profile
-- [ ] Verify Supabase Edge Functions work in production (register with an invite code)
-- [ ] Test PWA install from the live URL: "Add to Home Screen" on iOS, verify fullscreen launch
+- [x] Update Supabase Auth "Site URL" setting to the new Cloudflare Pages URL — ✅ Completed: 22 Feb 2026, 18:10
+- [x] Verify HTTPS is enforced (no HTTP access possible) — ✅ Completed: 22 Feb 2026, 18:10 (Cloudflare enforces HTTPS by default)
+- [x] Test the full flow on the live URL: open URL → login → map loads → tap region → see detail panel → boards → post → profile → edit profile — ✅ Completed: 22 Feb 2026, 19:00
+- [x] Verify Supabase Edge Functions work in production (register with an invite code) — ✅ Completed: 22 Feb 2026, 19:15 (Dennis confirmed registration and login work on live URL)
+- [x] Test PWA install from the live URL: "Add to Home Screen" on iOS, verify fullscreen launch — ✅ Completed: 22 Feb 2026, 19:15 (Dennis confirmed Add to Home Screen works)
 - [ ] Run a Lighthouse audit: target scores of 90+ on Performance, Accessibility, Best Practices, and PWA
 - [ ] Optional: connect a custom domain if one has been purchased. Configure DNS, verify SSL certificate.
-- [ ] Commit and push any post-deploy config: `git commit -m "Phase 1.7: Production deployment with security headers"`
+- [x] Commit and push any post-deploy config — ✅ Completed: 22 Feb 2026, 19:00 (multiple commits: CSP fix, static GeoJSON import, repaint fix)
+
+*Production map rendering fixes (added during deployment):*
+- [x] Fix CSP headers: add `blob:` to `script-src`, add `worker-src 'self' blob:` and `child-src 'self' blob:` for MapLibre web workers — ✅ Completed: 22 Feb 2026, 18:15
+- [x] Fix MapLibre GeoJSON loading: static import at build time via Vite (bypasses blob: worker fetch failure on Cloudflare Pages) — ✅ Completed: 22 Feb 2026, 18:45
+- [x] Add `map.resize()` + `map.triggerRepaint()` after layer setup to force canvas paint with synchronous data — ✅ Completed: 22 Feb 2026, 19:00
+
+*PWA install guide (added post-deployment):*
+- [x] Create `InstallGuide.tsx` component with platform detection (iOS/Android/Desktop) and `beforeinstallprompt` handling — ✅ Completed: 22 Feb 2026, 19:15
+- [x] Add install-guide step to `Onboarding.tsx` — shown before region selection, skipped if PWA already installed — ✅ Completed: 22 Feb 2026, 19:15
 
 ---
 
