@@ -6,9 +6,18 @@
 // Steps:
 //   1. Verify the caller is a super_admin
 //   2. Verify the target user exists and is not a super_admin
-//   3. Reset any invite codes used by this member (free them up)
-//   4. Delete the profile row
-//   5. Delete the auth user via Admin API
+//   3. Delete votes by this member (FK → profiles via user_id)
+//   4. Nullify reply_to_id refs to member's comments (self-ref FK)
+//   5. Delete comments by this member (FK → profiles via author_id)
+//   6. Delete posts by this member + their dependents (comments, votes)
+//   7. Nullify invite_codes.created_by
+//   8. Reset invite_codes.used_by (free codes for reuse)
+//   9. Delete the profile row
+//  10. Delete the auth user via Admin API
+//
+// Foreign key constraints on posts, comments, and votes reference
+// profiles(id) with default RESTRICT behaviour — we must delete
+// dependent rows before removing the profile.
 //
 // The service_role key never leaves the server.
 
@@ -86,7 +95,117 @@ serve(async (req: Request) => {
       return jsonResponse({ error: "Cannot delete a super admin." }, 403);
     }
 
-    // --- Step 1: Reset any invite codes used by this member ---
+    // --- Step 1: Delete votes by this member ---
+    // votes.user_id references profiles(id) with RESTRICT
+    const { error: votesError } = await adminClient
+      .from("votes")
+      .delete()
+      .eq("user_id", user_id);
+
+    if (votesError) {
+      console.error("Failed to delete votes:", votesError.message);
+      // Non-fatal if table doesn't exist yet — continue
+    }
+
+    // --- Step 2: Gather the member's comment IDs for FK cleanup ---
+    const { data: userComments } = await adminClient
+      .from("comments")
+      .select("id")
+      .eq("author_id", user_id);
+
+    const userCommentIds = userComments?.map((c: { id: string }) => c.id) || [];
+
+    // --- Step 3: Nullify reply_to_id references pointing at member's comments ---
+    // comments.reply_to_id is a self-referential FK to comments(id).
+    // Other users' replies that reference the member's comments would
+    // block deletion if we don't break the link first.
+    if (userCommentIds.length > 0) {
+      const { error: replyRefError } = await adminClient
+        .from("comments")
+        .update({ reply_to_id: null })
+        .in("reply_to_id", userCommentIds);
+
+      if (replyRefError) {
+        console.error("Failed to nullify reply_to_id refs:", replyRefError.message);
+      }
+    }
+
+    // --- Step 4: Delete the member's comments ---
+    // comments.author_id references profiles(id) with RESTRICT
+    if (userCommentIds.length > 0) {
+      const { error: commentsError } = await adminClient
+        .from("comments")
+        .delete()
+        .eq("author_id", user_id);
+
+      if (commentsError) {
+        console.error("Failed to delete comments:", commentsError.message);
+      }
+    }
+
+    // --- Step 5: Delete the member's posts and their dependents ---
+    // posts.author_id references profiles(id) with RESTRICT.
+    // Before deleting a post, we must remove all comments and votes on it.
+    const { data: userPosts } = await adminClient
+      .from("posts")
+      .select("id")
+      .eq("author_id", user_id);
+
+    if (userPosts && userPosts.length > 0) {
+      const postIds = userPosts.map((p: { id: string }) => p.id);
+
+      // 5a. Nullify reply_to_id within these posts' comments (self-ref FK)
+      for (const postId of postIds) {
+        await adminClient
+          .from("comments")
+          .update({ reply_to_id: null })
+          .eq("post_id", postId)
+          .not("reply_to_id", "is", null);
+      }
+
+      // 5b. Delete all comments on these posts (other users' comments)
+      const { error: orphanCommentsError } = await adminClient
+        .from("comments")
+        .delete()
+        .in("post_id", postIds);
+
+      if (orphanCommentsError) {
+        console.error("Failed to delete orphan comments:", orphanCommentsError.message);
+      }
+
+      // 5c. Delete votes on these posts (target_id is not a real FK,
+      // but cleaning up avoids orphaned vote records)
+      for (const postId of postIds) {
+        await adminClient
+          .from("votes")
+          .delete()
+          .eq("target_type", "post")
+          .eq("target_id", postId);
+      }
+
+      // 5d. Delete the posts themselves
+      const { error: postsError } = await adminClient
+        .from("posts")
+        .delete()
+        .eq("author_id", user_id);
+
+      if (postsError) {
+        console.error("Failed to delete posts:", postsError.message);
+      }
+    }
+
+    // --- Step 6: Nullify invite_codes.created_by ---
+    // This column is nullable, so we can set it to null safely
+    const { error: createdByError } = await adminClient
+      .from("invite_codes")
+      .update({ created_by: null })
+      .eq("created_by", user_id);
+
+    if (createdByError) {
+      console.error("Failed to nullify created_by:", createdByError.message);
+    }
+
+    // --- Step 7: Reset invite codes used by this member ---
     // This frees the code back up for reuse
     const { error: resetCodeError } = await adminClient
       .from("invite_codes")
@@ -94,11 +213,10 @@ serve(async (req: Request) => {
       .eq("used_by", user_id);
 
     if (resetCodeError) {
-      // Non-fatal — log but continue with deletion
       console.error("Failed to reset invite codes:", resetCodeError.message);
     }
 
-    // --- Step 2: Delete the profile row ---
+    // --- Step 8: Delete the profile row ---
     const { error: profileDeleteError } = await adminClient
       .from("profiles")
       .delete()
@@ -109,7 +227,7 @@ serve(async (req: Request) => {
       return jsonResponse({ error: "Failed to delete member profile." }, 500);
     }
 
-    // --- Step 3: Delete the auth user ---
+    // --- Step 9: Delete the auth user ---
     const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(user_id);
 
     if (authDeleteError) {
