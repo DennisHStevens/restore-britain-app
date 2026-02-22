@@ -23,9 +23,11 @@ interface InviteCode {
   used_by: string | null;
   used_at: string | null;
   created_at: string;
-  // Supabase PostgREST returns joined relations as arrays even for single values.
-  // This stores the joined profile when used_by is set.
-  used_by_profile?: Array<{ username: string }> | null;
+  /**
+   * Supabase PostgREST returns joined relations as arrays even for single-row joins.
+   * used_by_profile: who redeemed the code (via used_by FK)
+   */
+  used_by_profile?: Array<{ username: string; email: string }> | null;
 }
 
 interface MemberRow {
@@ -74,10 +76,10 @@ export function AdminPanel() {
         if (memberError) throw memberError;
         setMembers((memberData ?? []) as MemberRow[]);
 
-        // Fetch invite codes with joined used_by profile username
+        // Fetch invite codes with joined used_by profile (username + email)
         const { data: codeData, error: codeError } = await supabase
           .from('invite_codes')
-          .select('id, code, created_by, used_by, used_at, created_at, used_by_profile:profiles!invite_codes_used_by_fkey(username)')
+          .select('id, code, created_by, used_by, used_at, created_at, used_by_profile:profiles!invite_codes_used_by_fkey(username, email)')
           .order('created_at', { ascending: false });
 
         if (codeError) throw codeError;
@@ -338,6 +340,9 @@ export function AdminPanel() {
             <span className="admin-codes-stat">
               <span className="admin-codes-stat-number">{usedCount}</span> used
             </span>
+            <span className="admin-codes-stat">
+              <span className="admin-codes-stat-number">{inviteCodes.length}</span> total
+            </span>
           </div>
 
           {/* Filter toggle */}
@@ -352,66 +357,119 @@ export function AdminPanel() {
             </label>
           </div>
 
-          {/* Code list */}
-          <div className="admin-codes-list">
-            {filteredCodes.length === 0 && (
-              <p className="admin-codes-empty">
-                {showUsed
-                  ? 'No codes found.'
-                  : 'No available codes. Generate some below.'}
-              </p>
-            )}
-            {filteredCodes.map((code) => {
-              const isUsed = code.used_by !== null;
-              const isCopied = copiedCodeId === code.id;
+          {/* Code table — data-dense view with all relevant columns */}
+          <div className="admin-table-scroll">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th>Used By</th>
+                  <th>Used At</th>
+                  <th>Age</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCodes.length === 0 && (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--colour-text-muted)' }}>
+                      {showUsed
+                        ? 'No codes found.'
+                        : 'No available codes. Generate some below.'}
+                    </td>
+                  </tr>
+                )}
+                {filteredCodes.map((code) => {
+                  const isUsed = code.used_by !== null;
+                  const isCopied = copiedCodeId === code.id;
+                  const usedByUsername = code.used_by_profile?.[0]?.username;
+                  const usedByEmail = code.used_by_profile?.[0]?.email;
 
-              return (
-                <div
-                  key={code.id}
-                  className={`admin-code-card ${isUsed ? 'admin-code-card-used' : 'admin-code-card-available'}`}
-                  onClick={() => !isUsed && handleCopyCode(code.code, code.id)}
-                  role={isUsed ? undefined : 'button'}
-                  tabIndex={isUsed ? undefined : 0}
-                  onKeyDown={(e) => {
-                    if (!isUsed && (e.key === 'Enter' || e.key === ' ')) {
-                      e.preventDefault();
-                      handleCopyCode(code.code, code.id);
-                    }
-                  }}
-                >
-                  <div className="admin-code-card-top">
-                    <span className="admin-code-card-code">
-                      {code.code}
-                    </span>
-                    {isUsed ? (
-                      <span className="admin-code-badge admin-code-badge-used">Used</span>
-                    ) : isCopied ? (
-                      <span className="admin-code-badge admin-code-badge-copied">Copied!</span>
-                    ) : (
-                      <span className="admin-code-badge admin-code-badge-available">Tap to copy</span>
-                    )}
-                  </div>
-                  {isUsed && (
-                    <div className="admin-code-card-details">
-                      <span>
-                        Used by <strong>@{code.used_by_profile?.[0]?.username || 'unknown'}</strong>
-                      </span>
-                      <span>
+                  /* Human-readable relative time since creation */
+                  const ageMs = Date.now() - new Date(code.created_at).getTime();
+                  const ageDays = Math.floor(ageMs / (1000 * 60 * 60 * 24));
+                  const ageLabel =
+                    ageDays === 0 ? 'Today' :
+                    ageDays === 1 ? '1 day' :
+                    ageDays < 30 ? `${ageDays} days` :
+                    ageDays < 365 ? `${Math.floor(ageDays / 30)}mo` :
+                    `${Math.floor(ageDays / 365)}y`;
+
+                  return (
+                    <tr
+                      key={code.id}
+                      style={{
+                        opacity: isUsed ? 0.65 : 1,
+                        cursor: isUsed ? 'default' : 'pointer',
+                      }}
+                      onClick={() => !isUsed && handleCopyCode(code.code, code.id)}
+                    >
+                      {/* Code — monospace, tap-to-copy for available */}
+                      <td className="admin-cell-code" style={{ fontSize: '0.875rem', fontWeight: 600 }}>
+                        {code.code}
+                      </td>
+
+                      {/* Status badge */}
+                      <td>
+                        {isUsed ? (
+                          <span className="admin-code-badge admin-code-badge-used">Used</span>
+                        ) : isCopied ? (
+                          <span className="admin-code-badge admin-code-badge-copied">Copied!</span>
+                        ) : (
+                          <span className="admin-code-badge admin-code-badge-available" style={{ color: 'var(--colour-success)', fontWeight: 600 }}>
+                            Available
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Created date */}
+                      <td className="admin-cell-date">
+                        {new Date(code.created_at).toLocaleDateString('en-GB', {
+                          day: 'numeric',
+                          month: 'short',
+                        })}
+                      </td>
+
+                      {/* Used by: username + email */}
+                      <td>
+                        {isUsed ? (
+                          <div style={{ lineHeight: 1.3 }}>
+                            <div style={{ fontWeight: 600, color: 'var(--colour-primary)', fontSize: '0.8125rem' }}>
+                              @{usedByUsername || 'unknown'}
+                            </div>
+                            {usedByEmail && (
+                              <div style={{ fontSize: '0.6875rem', color: 'var(--colour-text-muted)' }}>
+                                {usedByEmail}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--colour-text-muted)' }}>—</span>
+                        )}
+                      </td>
+
+                      {/* Used at timestamp */}
+                      <td className="admin-cell-date">
                         {code.used_at
                           ? new Date(code.used_at).toLocaleDateString('en-GB', {
                               day: 'numeric',
                               month: 'short',
-                              year: 'numeric',
                               hour: '2-digit',
                               minute: '2-digit',
                             })
                           : '—'}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                      </td>
+
+                      {/* Age — how long since the code was created */}
+                      <td className="admin-cell-date">
+                        {ageLabel}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
 
           {/* Generate button — super_admin only */}
