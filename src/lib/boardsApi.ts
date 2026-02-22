@@ -388,23 +388,19 @@ export async function createComment(
 }
 
 /**
- * Soft-delete a comment.
+ * Soft-delete a comment via RPC.
  *
- * Sets deleted_at to now() and clears the body and images for privacy.
+ * Calls the `soft_delete_comment` SECURITY DEFINER function which
+ * handles authorisation checks and sets deleted_at, clears body/images.
  * The row remains in the database so the threaded tree structure is
  * preserved — the frontend renders it as a "[deleted]" placeholder.
  *
- * RLS ensures only the comment author can do this (auth.uid() = author_id).
+ * Auth: author (own comment), commander (regional), admin/super_admin (any).
  */
 export async function deleteComment(commentId: string): Promise<void> {
-  const { error } = await supabase
-    .from('comments')
-    .update({
-      deleted_at: new Date().toISOString(),
-      body: '[deleted]',
-      image_urls: [],
-    })
-    .eq('id', commentId);
+  const { error } = await supabase.rpc('soft_delete_comment', {
+    target_comment_id: commentId,
+  });
 
   if (error) throw error;
 }
@@ -555,25 +551,19 @@ export async function lockPost(postId: string, locked: boolean): Promise<void> {
 }
 
 /**
- * Soft-delete a post (moderator action).
+ * Soft-delete a post via RPC.
  *
- * Sets deleted_at and clears the body/images, similar to comment
- * soft-delete. The post disappears from the feed (fetchPosts filters
- * by deleted_at IS NULL), but the database row is preserved for
- * audit/moderation logs.
+ * Calls the `soft_delete_post` SECURITY DEFINER function which handles
+ * authorisation checks and sets deleted_at, clears body/images. The post
+ * disappears from the feed (fetchPosts filters by deleted_at IS NULL),
+ * but the database row is preserved for audit/moderation logs.
  *
- * RLS allows: author (own post), commanders (regional board),
- * admins/super_admins (any board).
+ * Auth: author (own post), commander (regional), admin/super_admin (any).
  */
 export async function softDeletePost(postId: string): Promise<void> {
-  const { error } = await supabase
-    .from('posts')
-    .update({
-      deleted_at: new Date().toISOString(),
-      body: '[deleted]',
-      image_urls: [],
-    })
-    .eq('id', postId);
+  const { error } = await supabase.rpc('soft_delete_post', {
+    target_post_id: postId,
+  });
 
   if (error) throw error;
 }
