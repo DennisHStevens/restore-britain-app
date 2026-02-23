@@ -248,9 +248,19 @@ export function AdminPanel() {
         body: { user_id: userId },
       });
 
-      if (error) throw error;
+      // supabase.functions.invoke wraps non-2xx responses in a generic error
+      // that hides the actual message. Extract the real error from the response.
+      if (error) {
+        let realMessage = error.message;
+        try {
+          // FunctionsHttpError stores the Response in .context
+          const body = await (error as any).context?.json?.();
+          if (body?.error) realMessage = body.error;
+        } catch { /* ignore parse failures */ }
+        throw new Error(realMessage);
+      }
 
-      // Check for application-level errors in the response
+      // Check for application-level errors in the response body
       if (data?.error) {
         throw new Error(data.error);
       }

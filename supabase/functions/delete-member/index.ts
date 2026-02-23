@@ -115,11 +115,10 @@ serve(async (req: Request) => {
 
     const userCommentIds = userComments?.map((c: { id: string }) => c.id) || [];
 
-    // --- Step 3: Nullify reply_to_id references pointing at member's comments ---
-    // comments.reply_to_id is a self-referential FK to comments(id).
-    // Other users' replies that reference the member's comments would
-    // block deletion if we don't break the link first.
+    // --- Step 3: Clean up references to member's comments ---
     if (userCommentIds.length > 0) {
+      // 3a. Nullify reply_to_id references pointing at member's comments.
+      // comments.reply_to_id is a self-referential FK to comments(id).
       const { error: replyRefError } = await adminClient
         .from("comments")
         .update({ reply_to_id: null })
@@ -127,11 +126,22 @@ serve(async (req: Request) => {
 
       if (replyRefError) {
         console.error("Failed to nullify reply_to_id refs:", replyRefError.message);
+        return jsonResponse({ error: `Cleanup failed: ${replyRefError.message}` }, 500);
+      }
+
+      // 3b. Delete votes that OTHER users cast on the member's comments
+      // (avoids orphaned vote records and vote-recount trigger failures)
+      for (const cid of userCommentIds) {
+        await adminClient
+          .from("votes")
+          .delete()
+          .eq("target_type", "comment")
+          .eq("target_id", cid);
       }
     }
 
     // --- Step 4: Delete the member's comments ---
-    // comments.author_id references profiles(id) with RESTRICT
+    // comments.author_id references profiles(id) with RESTRICT — MUST succeed
     if (userCommentIds.length > 0) {
       const { error: commentsError } = await adminClient
         .from("comments")
@@ -140,6 +150,7 @@ serve(async (req: Request) => {
 
       if (commentsError) {
         console.error("Failed to delete comments:", commentsError.message);
+        return jsonResponse({ error: `Failed to delete comments: ${commentsError.message}` }, 500);
       }
     }
 
@@ -163,7 +174,23 @@ serve(async (req: Request) => {
           .not("reply_to_id", "is", null);
       }
 
-      // 5b. Delete all comments on these posts (other users' comments)
+      // 5b. Delete votes on comments within these posts
+      const { data: postComments } = await adminClient
+        .from("comments")
+        .select("id")
+        .in("post_id", postIds);
+
+      if (postComments) {
+        for (const pc of postComments) {
+          await adminClient
+            .from("votes")
+            .delete()
+            .eq("target_type", "comment")
+            .eq("target_id", pc.id);
+        }
+      }
+
+      // 5c. Delete all comments on these posts (other users' comments)
       const { error: orphanCommentsError } = await adminClient
         .from("comments")
         .delete()
@@ -171,10 +198,10 @@ serve(async (req: Request) => {
 
       if (orphanCommentsError) {
         console.error("Failed to delete orphan comments:", orphanCommentsError.message);
+        return jsonResponse({ error: `Failed to delete post comments: ${orphanCommentsError.message}` }, 500);
       }
 
-      // 5c. Delete votes on these posts (target_id is not a real FK,
-      // but cleaning up avoids orphaned vote records)
+      // 5d. Delete votes on these posts
       for (const postId of postIds) {
         await adminClient
           .from("votes")
@@ -183,7 +210,7 @@ serve(async (req: Request) => {
           .eq("target_id", postId);
       }
 
-      // 5d. Delete the posts themselves
+      // 5e. Delete the posts themselves
       const { error: postsError } = await adminClient
         .from("posts")
         .delete()
@@ -191,6 +218,7 @@ serve(async (req: Request) => {
 
       if (postsError) {
         console.error("Failed to delete posts:", postsError.message);
+        return jsonResponse({ error: `Failed to delete posts: ${postsError.message}` }, 500);
       }
     }
 
