@@ -1990,38 +1990,194 @@ a:hover {
 
 
 /* ═══════════════════════════════════════════════════════════════
- * Quests — Coming Soon Placeholder
- * ═══════════════════════════════════════════════════════════════ */
+ * Quests — Mission Statement & Feature Roadmap
+ * ═══════════════════════════════════════════════════════════════
+ * During pre-alpha this page shows the mission and upcoming features.
+ * Once the quest system is built (Goal 2) this becomes the gamified
+ * task interface; the mission may move to an "About" section.
+ */
 
-.quests-page {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  padding: 2rem;
+.quests-page-v2 {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 1.25rem 1rem 2rem;
 }
 
-.quests-coming-soon {
+/* ── Mission Statement ─────────────────────────────────────── */
+
+.quests-mission {
   text-align: center;
-  max-width: 280px;
+  padding: 1.5rem 0.5rem 1.75rem;
 }
 
-.quests-coming-soon-icon {
-  color: var(--colour-text-muted);
-  opacity: 0.4;
+.quests-mission-badge {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--colour-primary);
+  background: rgba(5, 30, 64, 0.08);
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
   margin-bottom: 1rem;
 }
 
-.quests-coming-soon-title {
+.quests-mission-title {
   font-family: var(--font-heading);
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--colour-text);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.875rem;
 }
 
-.quests-coming-soon-text {
-  font-size: 0.875rem;
+.quests-mission-text {
+  font-size: 0.9375rem;
+  color: var(--colour-text-light);
+  line-height: 1.6;
+  margin-bottom: 0.75rem;
+}
+
+.quests-mission-text strong {
+  color: var(--colour-text);
+  font-weight: 700;
+}
+
+.quests-mission-cta {
+  color: var(--colour-text-muted);
+  font-size: 0.8125rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+}
+
+/* ── Feature Roadmap ───────────────────────────────────────── */
+
+.quests-roadmap {
+  margin-top: 0.5rem;
+}
+
+.quests-roadmap-title {
+  font-family: var(--font-heading);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--colour-text);
+  margin-bottom: 1rem;
+  padding-left: 0.25rem;
+}
+
+.quests-roadmap-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Each roadmap card is a tappable button for expand/collapse */
+.quests-roadmap-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0.75rem 0.25rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Timeline connector (vertical line + dot) ──────────────── */
+
+.quests-roadmap-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 20px;
+  flex-shrink: 0;
+  padding-top: 0.25rem;
+}
+
+.quests-roadmap-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--colour-border);
+  flex-shrink: 0;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* "Next up" dot gets the primary colour + glow */
+.quests-roadmap-dot.next {
+  background: var(--colour-primary);
+  box-shadow: 0 0 0 3px rgba(5, 30, 64, 0.15);
+}
+
+.quests-roadmap-line {
+  width: 2px;
+  flex: 1;
+  min-height: 2rem;
+  background: var(--colour-border);
+}
+
+/* ── Card content ──────────────────────────────────────────── */
+
+.quests-roadmap-card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.quests-roadmap-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.quests-roadmap-card-icon {
+  font-size: 1.125rem;
+  flex-shrink: 0;
+}
+
+.quests-roadmap-card-title {
+  font-family: var(--font-heading);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--colour-text);
+  flex: 1;
+}
+
+.quests-roadmap-card-timeline {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--colour-text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* "Next up" badge gets primary colour */
+.quests-roadmap-card-timeline.next {
+  color: var(--colour-primary);
+}
+
+/* Expandable body — animated via inline max-height + opacity */
+.quests-roadmap-card-body {
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.25s ease, margin-top 0.3s ease;
+}
+
+.quests-roadmap-card-body p {
+  font-size: 0.8125rem;
   color: var(--colour-text-muted);
   line-height: 1.5;
+}
+
+/* ── Footer ────────────────────────────────────────────────── */
+
+.quests-footer {
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--colour-text-muted);
+  margin-top: 1.5rem;
+  padding: 1rem 0.5rem;
+  border-top: 1px solid var(--colour-border);
 }
