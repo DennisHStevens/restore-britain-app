@@ -14,15 +14,9 @@
     <meta name="apple-mobile-web-app-title" content="Restore" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
 
-    <!-- Google Fonts — Montserrat (headings) + Lato (body).
-         Loaded asynchronously to eliminate render-blocking CSS (~300ms FCP saving).
-         The media="print" trick defers parsing until after first paint,
-         then onload swaps it to media="all" so it applies normally. -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&family=Lato:wght@400;700&display=swap" />
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&family=Lato:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&family=Lato:wght@400;700&display=swap" /></noscript>
+    <!-- Fonts are self-hosted via @fontsource (imported in main.tsx).
+         No external Google Fonts requests — eliminates render-blocking CSS
+         and the preconnect/preload network dependency chain. -->
 
     <!-- Manifest and favicon -->
     <link rel="manifest" href="/manifest.json" />

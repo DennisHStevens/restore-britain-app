@@ -68,9 +68,9 @@ export function Login() {
   }
 
   return (
-    <div style={styles.container}>
+    <main style={styles.container}>
       <div style={styles.card}>
-        <img src="/icons/rb-logo-40.png" alt="" style={styles.logo} />
+        <img src="/icons/rb-logo-40.png" alt="Restore Britain logo" style={styles.logo} />
         <h1 style={styles.title}>Restore Britain</h1>
         <p style={styles.subtitle}>
           Sign in to your account.
@@ -122,7 +122,7 @@ export function Login() {
           Have an invite code? <Link to="/register">Register</Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }
 

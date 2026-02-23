@@ -3,6 +3,16 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './hooks/useAuth';
 import { App } from './App';
+
+/* Self-hosted fonts via @fontsource — eliminates render-blocking Google Fonts
+ * requests (~300ms FCP saving on mobile). Latin-only subsets (UK audience),
+ * only the weights we use (Montserrat 600+700 headings, Lato 400+700 body).
+ * Saves ~300KB by excluding cyrillic, vietnamese, and latin-ext woff/woff2. */
+import '@fontsource/montserrat/latin-600.css';
+import '@fontsource/montserrat/latin-700.css';
+import '@fontsource/lato/latin-400.css';
+import '@fontsource/lato/latin-700.css';
+
 import './global.css';
 
 createRoot(document.getElementById('root')!).render(

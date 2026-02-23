@@ -111,9 +111,9 @@ export function Register() {
   }
 
   return (
-    <div style={styles.container}>
+    <main style={styles.container}>
       <div style={styles.card}>
-        <img src="/icons/rb-logo-40.png" alt="" style={styles.logo} />
+        <img src="/icons/rb-logo-40.png" alt="Restore Britain logo" style={styles.logo} />
         <h1 style={styles.title}>Join Restore Britain</h1>
         <p style={styles.subtitle}>
           Enter your invite code to create an account.
@@ -215,7 +215,7 @@ export function Register() {
           Already have an account? <Link to="/login">Log in</Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }
 

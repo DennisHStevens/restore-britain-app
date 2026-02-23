@@ -1,0 +1,12 @@
+# Restore Britain — robots.txt
+# This is a members-only PWA. Public pages (login/register) can be indexed,
+# but all authenticated content is behind Supabase Auth and isn't crawlable.
+
+User-agent: *
+Allow: /login
+Allow: /register
+Disallow: /admin
+Disallow: /profile
+Disallow: /onboarding
+
+Sitemap: https://restore-britain-app.pages.dev/sitemap.xml
