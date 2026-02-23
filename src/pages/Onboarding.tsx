@@ -64,6 +64,53 @@ export function Onboarding() {
   const [selectedRegionName, setSelectedRegionName] = useState<string | null>(null);
 
   /**
+   * Map region select handler — useCallback MUST be above any early returns
+   * to satisfy React's Rules of Hooks (hooks called in same order every render).
+   */
+  const handleMapRegionSelect = useCallback((featureId: string, _name: string) => {
+    const regionName = FEATURE_ID_TO_REGION_NAME[featureId];
+    if (!regionName) return;
+    setSelectedFeatureId(featureId);
+    setSelectedRegionName(regionName);
+    setError('');
+  }, []);
+
+  async function handleMapConfirm() {
+    if (!selectedRegionName) return;
+
+    setSaving(true);
+    setError('');
+
+    const { data: regionData, error: regionError } = await supabase
+      .from('regions')
+      .select('id')
+      .eq('name', selectedRegionName)
+      .single();
+
+    if (regionError || !regionData) {
+      setError('Could not find that region. Please try again.');
+      setSaving(false);
+      return;
+    }
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({
+        region_id: regionData.id,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', profile?.id);
+
+    if (updateError) {
+      setError('Failed to save your region. Please try again.');
+      setSaving(false);
+      return;
+    }
+
+    await refreshProfile();
+  }
+
+  /**
    * Watch for profile.region_id to become non-null.
    * Shared context means the update is visible immediately after
    * refreshProfile() resolves and React re-renders.
@@ -134,51 +181,6 @@ export function Onboarding() {
       setError('Failed to save your region. Please try again.');
       setSaving(false);
       console.error('[Onboarding] Profile update failed:', updateError);
-      return;
-    }
-
-    await refreshProfile();
-  }
-
-  /* ── Map picker handlers ───────────────────────────────────── */
-
-  const handleMapRegionSelect = useCallback((featureId: string, _name: string) => {
-    const regionName = FEATURE_ID_TO_REGION_NAME[featureId];
-    if (!regionName) return;
-    setSelectedFeatureId(featureId);
-    setSelectedRegionName(regionName);
-    setError('');
-  }, []);
-
-  async function handleMapConfirm() {
-    if (!selectedRegionName) return;
-
-    setSaving(true);
-    setError('');
-
-    const { data: regionData, error: regionError } = await supabase
-      .from('regions')
-      .select('id')
-      .eq('name', selectedRegionName)
-      .single();
-
-    if (regionError || !regionData) {
-      setError('Could not find that region. Please try again.');
-      setSaving(false);
-      return;
-    }
-
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({
-        region_id: regionData.id,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', profile?.id);
-
-    if (updateError) {
-      setError('Failed to save your region. Please try again.');
-      setSaving(false);
       return;
     }
 
